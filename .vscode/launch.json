@@ -1,0 +1,38 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Whisper Live",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "src/whisper_server.py",
+            "console": "integratedTerminal",
+            "args": "--model tiny --lan de --libretranslate-url http://127.0.0.1:5000 --source-lang de --target-lang en --timeout 4"
+        },
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python Debugger: Run Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "server.py"
+        },
+        {
+            "name": "Python Debugger: Run Debug Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "server.py",
+            "args": [
+                "--debug"
+            ]
+        }
+    ]
+}
