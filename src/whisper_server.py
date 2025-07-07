@@ -1,11 +1,12 @@
 from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interface_html
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sentence_buffer import SentenceBuffer
 from contextlib import asynccontextmanager
 from translation_worker import TranslationWorker
+from connection_manager import ConnectionManager
 import subprocess
 import argparse
 import asyncio
@@ -31,6 +32,7 @@ logging.getLogger("faster_whisper").setLevel(logging.WARNING)
 transcription_engine = None
 server_ready = False
 lt = None
+manager = ConnectionManager()
 
 # --- FastAPI App and Lifespan ---
 @asynccontextmanager
@@ -83,6 +85,16 @@ async def handle_websocket_results(websocket: WebSocket, results_generator, sent
             sentence_buffer.process(response["lines"])
     await websocket.send_json({"type": "ready_to_stop"})
 
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Optionally handle incoming messages from clients here
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine
@@ -101,8 +113,9 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             message = await websocket.receive_bytes()
             await audio_processor.process_audio(message)
-    finally:
+    except WebSocketDisconnect:
         translation_worker.stop()
+        results_task.cancel()
 
 
 if __name__ == "__main__":
