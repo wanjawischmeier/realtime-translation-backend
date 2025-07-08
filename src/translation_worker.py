@@ -1,13 +1,16 @@
 from libretranslatepy import LibreTranslateAPI
 import threading
+import asyncio
 import time
 import json
 import logging
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, sentence_buffer, source_lang="en", target_lang="de", lt_url="http://127.0.0.1:5000", log_path="logs/committed_translations.txt", poll_interval=0.5):
+    def __init__(self, sentence_buffer, connection_manager, event_loop: asyncio.AbstractEventLoop, source_lang="en", target_lang="de", lt_url="http://127.0.0.1:5000", log_path="logs/committed_translations.txt", poll_interval=0.5):
         super().__init__(daemon=True)
         self.sentence_buffer = sentence_buffer
+        self.connection_manager = connection_manager
+        self.event_loop = event_loop
         self.log_path = log_path
         self.poll_interval = poll_interval
         self.translated_sentences = []
@@ -55,6 +58,12 @@ class TranslationWorker(threading.Thread):
                     self.logger.info(f"Translated: {sentence} -> {translation}")
                     self.translated_sentences.append({"sentence": sentence, "translation": translation, **meta})
                     self.last_translated_index += 1
+
+                    # Broadcast to all clients
+                    asyncio.run_coroutine_threadsafe(
+                        self.connection_manager.broadcast({"type": "translation", "data": self.translated_sentences}),
+                        self.event_loop
+                    )
             time.sleep(self.poll_interval)
 
     def _log_translation(self, src, translation, meta):

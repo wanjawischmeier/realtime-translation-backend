@@ -30,6 +30,7 @@ logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
 
 transcription_engine = None
+translation_worker = None
 server_ready = False
 lt = None
 manager = ConnectionManager()
@@ -81,28 +82,38 @@ async def health():
 async def handle_websocket_results(websocket: WebSocket, results_generator, sentence_buffer):
     async for response in results_generator:
         await websocket.send_json(response)
+
+        # Broadcast ASR result to all clients
+        await manager.broadcast({"type": "asr", "data": response})
+
         if "lines" in response and isinstance(response["lines"], list):
             sentence_buffer.process(response["lines"])
+    
     await websocket.send_json({"type": "ready_to_stop"})
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
+
+    if translation_worker != None:
+        # Send existing transcript
+        await websocket.send_json({"type": "translation", "data": translation_worker.translated_sentences})
+
     try:
         while True:
-            # Optionally handle incoming messages from clients here
-            await websocket.receive_text()
+            await asyncio.sleep(60)  # Just keep the connection alive
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
-    global transcription_engine
+    global transcription_engine, translation_worker
 
     audio_processor = AudioProcessor(transcription_engine=transcription_engine)    
     results_generator = await audio_processor.create_tasks()
     sentence_buffer = SentenceBuffer()
-    translation_worker = TranslationWorker(sentence_buffer, source_lang="de", target_lang="en")
+    loop = asyncio.get_event_loop()
+    translation_worker = TranslationWorker(sentence_buffer, manager, loop, source_lang="de", target_lang="en")
     translation_worker.start()
 
     results_task = asyncio.create_task(
