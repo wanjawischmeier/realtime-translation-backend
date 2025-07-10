@@ -4,7 +4,7 @@ import logging
 import re
 
 def split_sentences(text):
-    # Basic sentence splitter (improve as needed)
+    # Basic sentence splitter
     # Handles ., !, ? followed by space or end of string
     return [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
 
