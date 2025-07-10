@@ -37,7 +37,7 @@ lt = None
 async def lifespan(app: FastAPI):
     global transcription_engine, server_ready, lt
     print(f"[INFO] Loading Whisper model: {args.model}, diarization={args.diarization}, language={args.lan}")
-    transcription_engine = TranscriptionEngine(model=args.model, diarization=args.diarization, lan=args.lan, buffer_trimming="sentence")
+    transcription_engine = TranscriptionEngine(model=args.model, diarization=args.diarization, lan=args.lan) # buffer_trimming="sentence"
     server_ready = True
     try:
         yield
@@ -67,8 +67,9 @@ async def health():
 async def handle_websocket_results(websocket: WebSocket, results_generator):
     async for response in results_generator:
         # print(response)
-        transcription_manager.process_chunk(response)
-        await websocket.send_json(response)
+        ws_response = websocket.send_json(response)
+        # transcription_manager.process_chunk(response)
+        await ws_response
         
     await websocket.send_json({"type": "ready_to_stop"})
 

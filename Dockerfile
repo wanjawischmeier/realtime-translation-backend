@@ -1,5 +1,8 @@
 FROM python:3.9.23-slim
 
+# Install FFmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg
+
 # Install Poetry
 RUN pip install --no-cache-dir poetry
 

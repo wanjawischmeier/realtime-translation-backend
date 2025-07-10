@@ -1,6 +1,7 @@
 import threading
 import logging
 import json
+import os
 from rolling_average import RollingAverage
 # from mosestokenizer import MosesSentenceSplitter
 
@@ -11,6 +12,8 @@ from nltk.tokenize import sent_tokenize
 
 class TranscriptionManager:
     def __init__(self, log_path="logs/transcript.txt", compare_depth=10):
+        if not os.path.exists("logs"):
+            os.mkdir("logs")
         self.logger = logging.getLogger("TranscriptionManager")
         self.log_path = log_path
         self.compare_depth = compare_depth
