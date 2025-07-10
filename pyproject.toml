@@ -26,6 +26,8 @@ aiortc = "^1.13.0"
 aiohttp = "^3.12.13"
 aiohttp-cors = "^0.8.1"
 tiktoken = "^0.9.0"
+mosestokenizer = "^1.2.1"
+nltk = "^3.9.1"
 
 
 
