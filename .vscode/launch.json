@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "src/whisper_server.py",
             "console": "integratedTerminal",
-            "args": "--model tiny --lan de --libretranslate-url http://127.0.0.1:5000 --source-lang de --target-lang en --timeout 4"
+            "args": "--model small --lan de --libretranslate-url 127.0.0.1 --libretranslate-port 5000 --source-lang de --target-lang en --timeout 4"
         },
         {
             "name": "Python Debugger: Current File",
