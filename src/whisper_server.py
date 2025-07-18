@@ -4,11 +4,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from transcription_manager import TranscriptionManager
+from translation_worker import TranslationWorker
+from connection_manager import ConnectionManager
 import subprocess
 import argparse
 import asyncio
 import logging
-import sys
 
 # --- Argument Parsing ---
 parser = argparse.ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
@@ -17,7 +18,8 @@ parser.add_argument("--diarization", action="store_true", help="Enable speaker d
 parser.add_argument("--lan", default="de", help="Language for Whisper model (e.g., en, de)")
 parser.add_argument("--host", default="0.0.0.0", help="Host to bind FastAPI server")
 parser.add_argument("--port", type=int, default=8000, help="Port to bind FastAPI server")
-parser.add_argument("--libretranslate-url", default="http://127.0.0.1:5000", help="LibreTranslate API URL")
+parser.add_argument("--libretranslate-url", default="http://127.0.0.1", help="LibreTranslate API URL")
+parser.add_argument("--libretranslate-port", type=int, default=5000, help="Port to bind LibreTranslate server")
 parser.add_argument("--source-lang", default="en", help="Source language for translation")
 parser.add_argument("--target-lang", default="de", help="Target language for translation")
 parser.add_argument("--timeout", type=int, default=10, help="Timeout in seconds for audio inactivity")
@@ -27,6 +29,7 @@ args, unknown = parser.parse_known_args()
 logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
 
+connection_manager = ConnectionManager()
 transcription_manager = None
 transcription_engine = None
 server_ready = False
@@ -38,6 +41,21 @@ async def lifespan(app: FastAPI):
     global transcription_engine, server_ready, lt
     print(f"[INFO] Loading Whisper model: {args.model}, diarization={args.diarization}, language={args.lan}")
     transcription_engine = TranscriptionEngine(model=args.model, diarization=args.diarization, lan=args.lan) # buffer_trimming="sentence"
+
+    print(f"[INFO] Starting LibreTranslate server: {args.libretranslate_url}:{args.libretranslate_port}")
+    # Start LibreTranslate as a subprocess
+    libretranslate_proc = subprocess.Popen(
+        [
+            "poetry", "run", "libretranslate",
+            "--host", args.libretranslate_url,
+            "--port", str(args.libretranslate_port),
+            "--load-only", "en,de"
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    print(f"[INFO] LibreTranslate server started with PID {libretranslate_proc.pid}")
+
     server_ready = True
     try:
         yield
@@ -63,13 +81,22 @@ async def health():
         return JSONResponse({"status": "ok"}, status_code=200)
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
+    
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await connection_manager.connect(websocket)
+
+    try:
+        while True:
+            await asyncio.sleep(60)  # Just keep the connection alive
+    except WebSocketDisconnect:
+        connection_manager.disconnect(websocket)
 
 async def handle_websocket_results(websocket: WebSocket, results_generator):
     async for response in results_generator:
         # print(response)
-        ws_response = websocket.send_json(response)
-        # transcription_manager.process_chunk(response)
-        await ws_response
+        transcription_manager.process_chunk(response)
+        await websocket.send_json(response)
         
     await websocket.send_json({"type": "ready_to_stop"})
 
@@ -78,8 +105,14 @@ async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine, transcription_manager
 
     transcription_manager = TranscriptionManager()
+    translation_worker = TranslationWorker(
+        transcription_manager, "de", ["en"],
+        lt_url=args.libretranslate_url, lt_port=args.libretranslate_port,
+        poll_interval=1
+    )
+    translation_worker.start()
 
-    audio_processor = AudioProcessor(transcription_engine=transcription_engine)    
+    audio_processor = AudioProcessor(transcription_engine=transcription_engine)
     results_generator = await audio_processor.create_tasks()
     results_task = asyncio.create_task(
         handle_websocket_results(websocket, results_generator)
@@ -91,6 +124,7 @@ async def websocket_endpoint(websocket: WebSocket):
             message = await websocket.receive_bytes()
             await audio_processor.process_audio(message)
     except WebSocketDisconnect:
+        translation_worker.stop()
         results_task.cancel()
 
 
@@ -99,6 +133,5 @@ if __name__ == "__main__":
     uvicorn.run(
         "whisper_server:app",
         host=args.host,
-        port=args.port,
-        reload=True
+        port=args.port
     )
