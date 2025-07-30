@@ -20,3 +20,5 @@ RUN poetry install --no-interaction --no-ansi
 
 # Expose port 8000
 EXPOSE 8000
+EXPOSE 5000
+
