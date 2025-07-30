@@ -3,3 +3,5 @@
 /db
 /logs
 /poetry.lock
+.python-version
+.idea
