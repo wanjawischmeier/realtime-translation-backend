@@ -5,3 +5,4 @@
 /poetry.lock
 .python-version
 .idea
+poetry.toml
