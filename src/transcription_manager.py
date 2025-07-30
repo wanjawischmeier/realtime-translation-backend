@@ -3,29 +3,56 @@ import logging
 import json
 import os
 from rolling_average import RollingAverage
-# from mosestokenizer import MosesSentenceSplitter
 
+# Initialize tokenizer
 import nltk
 nltk.download('punkt')
 nltk.download('punkt_tab')
 from nltk.tokenize import sent_tokenize
 
+punkt_language_map = {
+    'cs': 'czech',
+    'da': 'danish',
+    'nl': 'dutch',
+    'en': 'english',
+    'et': 'estonian',
+    'fi': 'finnish',
+    'fr': 'french',
+    'de': 'german',
+    'el': 'greek',
+    'it': 'italian',
+    'no': 'norwegian',
+    'pl': 'polish',
+    'pt': 'portuguese',
+    'ru': 'russian',
+    'sl': 'slovene',
+    'es': 'spanish',
+    'sv': 'swedish',
+    'tr': 'turkish'
+}
+
+
 class TranscriptionManager:
-    def __init__(self, log_path="logs/transcript.txt", compare_depth=10):
+    def __init__(self, source_lang, log_path="logs/transcript.txt", compare_depth=10):
+        if not source_lang in punkt_language_map:
+            raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
+
         if not os.path.exists("logs"):
             os.mkdir("logs")
         self.logger = logging.getLogger("TranscriptionManager")
         self.log_path = log_path
         self.compare_depth = compare_depth
+        self.source_lang = source_lang
+        self._punkt_lang = punkt_language_map.get(source_lang)
 
         self.rolling_transcription_delay = RollingAverage()
         self.rolling_translation_delay = RollingAverage()
 
-        self.buffer_transcription = "" # Any text ucrrently in the transcription buffer
+        self.buffer_transcription = "" # Any text currently in the transcription buffer
         self.incomplete_sentence = "" # Any sentence that is out of the buffer but not completed
         self.lines = []  # Each: {'beg', 'end', 'text', 'speaker', 'sentences': [ ... ]}
         self._to_translate = []  # Each: {'line_idx', 'sent_idx', 'sentence', 'translated_langs': set()}
-        # self.sentence_splitter = MosesSentenceSplitter('de')  # or 'en'
+
         self.lock = threading.Lock()
 
     def _time_str_to_seconds(self, time_str):
@@ -53,7 +80,7 @@ class TranscriptionManager:
             return sentences[:-1], last
         return sentences, ""
 
-    def process_chunk(self, chunk):
+    def submit_chunk(self, chunk):
         with self.lock:
             updated = self.buffer_transcription != chunk.get('buffer_transcription', '')
             self.buffer_transcription = chunk.get('buffer_transcription', '')
@@ -68,8 +95,7 @@ class TranscriptionManager:
                 if text == '': continue
 
                 # Split into sentences
-                # sentences = self.sentence_splitter([text])
-                new_sentences_raw = sent_tokenize(text, language='german')
+                new_sentences_raw = sent_tokenize(text, language=self._punkt_lang)
                 new_sentences_raw, incomplete_sentence = self._filter_complete_sentences(new_sentences_raw)
                 self.incomplete_sentence = incomplete_sentence
 
@@ -96,7 +122,6 @@ class TranscriptionManager:
                             # Step 2: Handle added sentences
                             for j in range(min_len, len(new_sentences_raw)):
                                 new_sentences.append({'sentence': new_sentences_raw[j]})
-                            # Step 3: No need to handle removed sentences: just ignore extra old ones
 
                             # Update the line
                             self.lines[line_idx].update({
@@ -109,7 +134,7 @@ class TranscriptionManager:
 
                             # Update _to_translate for each sentence
                             for j, sent in enumerate(new_sentences):
-                                self._ensure_to_translate_entry(line_idx, j, sent['sentence'])
+                                self._add_to_translation_queue(line_idx, j, sent['sentence'])
                             updated = True
                 else:
                     # New line
@@ -126,35 +151,14 @@ class TranscriptionManager:
                     }
                     self.lines.append(new_line)
                     for j, sent in enumerate(new_sentences):
-                        self._ensure_to_translate_entry(len(self.lines) - 1, j, sent['sentence'])
+                        self._add_to_translation_queue(len(self.lines) - 1, j, sent['sentence'])
                     updated = True
 
             if updated:
                 self._log_transcript_to_file()
                 self._log_to_translate()
 
-    def _ensure_to_translate_entry(self, line_idx, sent_idx, sentence):
-        # Find existing entry for this (line_idx, sent_idx)
-        for entry in self._to_translate:
-            if entry['line_idx'] == line_idx and entry['sent_idx'] == sent_idx:
-                if entry['sentence'] == sentence:
-                    # Sentence unchanged, nothing to do
-                    return
-                else:
-                    # Sentence changed, update text and reset translations
-                    entry['sentence'] = sentence
-                    entry['translated_langs'] = set()
-                    self.logger.debug(f"Changed sentence: at line {line_idx}, sent {sent_idx}, text: {sentence}")
-                    return
-        # No entry found, add new
-        self._to_translate.append({
-            'line_idx': line_idx,
-            'sent_idx': sent_idx,
-            'sentence': sentence,
-            'translated_langs': set()
-        })
-
-    def submit_translations(self, translation_results, translation_time):
+    def submit_translation(self, translation_results, translation_time):
         """
         translation_results: list of dicts, each like
             {
@@ -232,6 +236,27 @@ class TranscriptionManager:
             'transcription_delay': self.rolling_transcription_delay.get_average(),
             'translation_delay': self.rolling_translation_delay.get_average()
         }
+
+    def _add_to_translation_queue(self, line_idx, sent_idx, sentence):
+        # Find existing entry for this (line_idx, sent_idx)
+        for entry in self._to_translate:
+            if entry['line_idx'] == line_idx and entry['sent_idx'] == sent_idx:
+                if entry['sentence'] == sentence:
+                    # Sentence unchanged, nothing to do
+                    return
+                else:
+                    # Sentence changed, update text and reset translations
+                    entry['sentence'] = sentence
+                    entry['translated_langs'] = set()
+                    self.logger.debug(f"Changed sentence: at line {line_idx}, sent {sent_idx}, text: {sentence}")
+                    return
+        # No entry found, add new
+        self._to_translate.append({
+            'line_idx': line_idx,
+            'sent_idx': sent_idx,
+            'sentence': sentence,
+            'translated_langs': set()
+        })
 
     def _log_transcript_to_file(self):
         try:
