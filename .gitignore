@@ -6,3 +6,4 @@
 .python-version
 .idea
 poetry.toml
+src/db/sessions/
