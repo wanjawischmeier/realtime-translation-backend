@@ -103,7 +103,7 @@ async def handle_websocket_results(websocket: WebSocket, results_generator):
 async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine, transcription_manager
 
-    transcription_manager = TranscriptionManager()
+    transcription_manager = TranscriptionManager(args.source_lang)
     translation_worker = TranslationWorker(
         transcription_manager, args.source_lang, [args.source_lang],    # TODO: implement multiple target langs
         lt_url=args.libretranslate_url, lt_port=args.libretranslate_port,
