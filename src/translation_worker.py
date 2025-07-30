@@ -58,7 +58,7 @@ class TranslationWorker(threading.Thread):
                         })
                     if translation_results:
                         translation_time = time.time() - cycle_start
-                        self.transcription_manager.submit_translations(translation_results, translation_time)
+                        self.transcription_manager.submit_translation(translation_results, translation_time)
                         self.logger.info(f"Submitted {len(translation_results)} translations to '{target_lang}' in {translation_time:.2f}s.")
             except Exception as e:
                 self.logger.error(f"Error in translation cycle: {e}")
