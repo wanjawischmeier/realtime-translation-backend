@@ -3,12 +3,14 @@ services:
     build: .
     ports:
       - "8000:8000"
+      - "5000:5000"
     volumes:
       - ./src:/app/src  # Mount src for live code updates
     command: >
       python src/whisper_server.py
       --model tiny
-      --libretranslate-url http://127.0.0.1:5000
+      --libretranslate-url 127.0.0.1
+      --libretranslate-port 5000
       --source-lang de
       --target-lang en
       --timeout 4
