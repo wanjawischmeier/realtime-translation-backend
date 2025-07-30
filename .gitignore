@@ -3,4 +3,7 @@
 /db
 /logs
 /poetry.lock
+.python-version
+.idea
+poetry.toml
 src/db/sessions/
