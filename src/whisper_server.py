@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from transcription_manager import TranscriptionManager
-from translation_worker import TranslationWorker
+from translation_worker import TranslationWorker, RoomManager # TODO: remove temporary import
 from connection_manager import ConnectionManager
 import subprocess
 import argparse
@@ -104,8 +104,9 @@ async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine, transcription_manager
 
     transcription_manager = TranscriptionManager(args.source_lang)
+    room_manager = RoomManager([transcription_manager])        # TODO: remove temporary
     translation_worker = TranslationWorker(
-        transcription_manager, args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
+        room_manager, args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
         lt_url=args.libretranslate_url, lt_port=args.libretranslate_port,
         poll_interval=1
     )
