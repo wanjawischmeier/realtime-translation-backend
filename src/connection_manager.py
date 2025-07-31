@@ -34,7 +34,8 @@ class ConnectionManager:
                 await self._audio_processor.process_audio(message)
         except WebSocketDisconnect:
             self._cancel_existing_tasks()
-            self._clients.remove(self._host)
+            if self._host in self._clients:
+                self._clients.remove(self._host)
             self._host = None
             self.logger.info('Host disconnected')
 
