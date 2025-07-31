@@ -1,17 +1,9 @@
-# TODO Add Class for Rooms
-# TODO ADD methods to manage rooms
-import websocket
-from whisperlivekit import AudioProcessor
-from whisperlivekit.basic_server import transcription_engine
-
-from src.connection_manager import ConnectionManager
 from src.pretalx_api_wrapper import PretalxAPI
 from src.transcription_manager import TranscriptionManager
-from src.whisper_server import args
 
 
 class Room:
-    def __init__(self, code:str, title: str, track:str, location:str, url:str, description:str, organizer:str, do_not_record:bool):
+    def __init__(self, code:str, title: str, track:str, location:str, url:str, description:str, organizer:str, do_not_record:bool, transcription_manager=None):
         self.id = code
         self.title = title
         self.track = track
@@ -21,7 +13,7 @@ class Room:
         self.do_not_record = do_not_record
         self.organizer = organizer
         self.description = description
-        self.transcription_manager:TranscriptionManager = None
+        self.transcription_manager:TranscriptionManager = transcription_manager
 
 
 class RoomManager:
@@ -30,6 +22,7 @@ class RoomManager:
         self.pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
         self.current_rooms = []
         self.update_rooms()
+        self.transcription_managers = []
 
     def update_rooms(self):
         self.pretalx.get_ongoing_events()
@@ -46,9 +39,14 @@ class RoomManager:
             else:
                 room.active = True
                 room.transcription_manager = TranscriptionManager(source_lang)
+                self.transcription_managers.append(room.transcription_manager)
+
+    def deactivate_room(self, room_id:str):
+        for room in self.current_rooms:
+            if room_id != room.id:
+                continue
+            else:
+                room.active = True
+                self.transcription_managers.pop(room.transcription_manager)
 
 room_manager = RoomManager(pretalx=PretalxAPI())
-
-class RoomManager2:
-    def __init__(self, transcription_managers: list[TranscriptionManager]):
-        self.transcription_managers = transcription_managers

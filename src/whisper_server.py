@@ -1,17 +1,17 @@
-from typing import Union
-
-from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interface_html
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from transcription_manager import TranscriptionManager
-from translation_worker import TranslationWorker
-from connection_manager import ConnectionManager
-import subprocess
 import argparse
 import asyncio
 import logging
+import subprocess
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interface_html
+
+from connection_manager import ConnectionManager
+from transcription_manager import TranscriptionManager
+from translation_worker import TranslationWorker
 
 # --- Argument Parsing ---
 parser = argparse.ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
