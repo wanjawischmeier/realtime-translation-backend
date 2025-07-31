@@ -1,7 +1,9 @@
 import threading
 import logging
+import pickle
 import json
 import os
+from datetime import datetime
 from rolling_average import RollingAverage
 from connection_manager import ConnectionManager
 
@@ -34,16 +36,26 @@ punkt_language_map = {
 
 
 class TranscriptionManager:
-    def __init__(self, source_lang: str, connection_manager: ConnectionManager, room_id="default_room", log_directory="logs", compare_depth=10, num_lines_to_broadcast=3):
+    def __init__(self, source_lang: str, connection_manager: ConnectionManager,
+                 transcripts_db_directory="transcripts_db", log_directory="logs",
+                 room_id="default_room", compare_depth=10, num_lines_to_broadcast=3):
+        
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
 
-        if not os.path.exists("logs"):
-            os.mkdir("logs")
+        transcripts_db_directory = f"{transcripts_db_directory}/{room_id}"
+        if not os.path.exists(transcripts_db_directory):
+            os.makedirs(transcripts_db_directory)
+        if not os.path.exists(log_directory):
+            os.mkdir(log_directory)
+
         self.logger = logging.getLogger("TranscriptionManager")
+
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        self._transcript_db_path = f"{transcripts_db_directory}/{timestamp}.pkl"
         self.log_directory = log_directory
         self.compare_depth = compare_depth
-        self.source_lang = source_lang
+        self._source_lang = source_lang
         self._connection_manager = connection_manager
         self.room_id = room_id
         self._punkt_lang = punkt_language_map.get(source_lang)
@@ -52,8 +64,8 @@ class TranscriptionManager:
         self.rolling_transcription_delay = RollingAverage()
         self.rolling_translation_delay = RollingAverage()
 
-        self.buffer_transcription = "" # Any text currently in the transcription buffer
-        self.incomplete_sentence = "" # Any sentence that is out of the buffer but not completed
+        self._buffer_transcription = "" # Any text currently in the transcription buffer
+        self._incomplete_sentence = "" # Any sentence that is out of the buffer but not completed
         self._lines = []  # Each: {'beg', 'end', 'text', 'speaker', 'sentences': [ ... ]}
         self._to_translate = []  # Each: {'line_idx', 'sent_idx', 'sentence', 'translated_langs': set()}
 
@@ -71,6 +83,13 @@ class TranscriptionManager:
         except Exception as e:
             self.logger.error(f"Error parsing time string '{time_str}': {e}")
             return 0
+        
+    def _format_time(self, seconds: int) -> str:
+        """Convert seconds to HH:MM:SS format."""
+        h = seconds // 3600
+        m = (seconds % 3600) // 60
+        s = seconds % 60
+        return f"{h:02d}:{m:02d}:{s:02d}"
     
     def _filter_complete_sentences(self, sentences) -> tuple[list[str], str]:
         """
@@ -86,8 +105,8 @@ class TranscriptionManager:
 
     def submit_chunk(self, chunk):
         with self.lock:
-            updated = self.buffer_transcription != chunk.get('buffer_transcription', '')
-            self.buffer_transcription = chunk.get('buffer_transcription', '')
+            updated = self._buffer_transcription != chunk.get('buffer_transcription', '')
+            self._buffer_transcription = chunk.get('buffer_transcription', '')
             incoming_lines = chunk.get('lines', [])
             self.rolling_transcription_delay.add(chunk['remaining_time_transcription'])
 
@@ -101,7 +120,7 @@ class TranscriptionManager:
                 # Split into sentences
                 new_sentences_raw = sent_tokenize(text, language=self._punkt_lang)
                 new_sentences_raw, incomplete_sentence = self._filter_complete_sentences(new_sentences_raw)
-                self.incomplete_sentence = incomplete_sentence
+                self._incomplete_sentence = incomplete_sentence
 
                 line_idx = len(self._lines) - len(incoming_lines) + i
                 if 0 <= line_idx < len(self._lines):
@@ -158,14 +177,8 @@ class TranscriptionManager:
                         self._add_to_translation_queue(len(self._lines) - 1, j, sent['sentence'])
                     updated = True
 
-            if updated:
-                # send last n lines of updated transcript to all connected clients
-                last_n_lines = self.get_last_n_lines(3)
-                self._connection_manager.broadcast(last_n_lines)
-
-                # logging for debugging
-                self._log_transcript_to_file()
-                self._log_to_translate()
+            if updated: # only push if changes occured
+                self._push_updated_transcript()
 
     def submit_translation(self, translation_results, translation_time):
         """
@@ -212,9 +225,24 @@ class TranscriptionManager:
                         f"Discarded translation: line_idx {line_idx} or sent_idx {sent_idx} out of range."
                     )
 
-            self._log_transcript_to_file()
-            self._log_to_translate()
+            self._push_updated_transcript()
     
+    def _push_updated_transcript(self):
+        # send last n lines of updated transcript to all connected clients
+        last_n_lines = self.get_last_n_lines(3)
+        # self._connection_manager.broadcast(last_n_lines)
+
+        # logging for debugging
+        self._log_transcript_to_file()
+        self._log_to_translate()
+        transcript = self.get_human_readable_transcript("en")
+        with open(f'{self.log_directory}/human_transcript.txt', 'w') as f:
+            f.write(transcript)
+
+        # write changes to disk
+        with open(self._transcript_db_path, 'wb') as pkl_file:
+            pickle.dump(self._lines, pkl_file)
+
     def poll_sentences_to_translate(self):
         with self.lock:
             # Return the list as-is
@@ -228,7 +256,7 @@ class TranscriptionManager:
                     sents.append(sent[f'sentence_{lang}'])
                 else:
                     sents.append(sent['sentence'])
-        return " ".join(sents) + " " + self.buffer_transcription
+        return " ".join(sents) + " " + self._buffer_transcription
 
     def get_sentences(self, lang=None):
         sents = []
@@ -260,6 +288,44 @@ class TranscriptionManager:
             'transcription_delay': self.rolling_transcription_delay.get_average(),
             'translation_delay': self.rolling_translation_delay.get_average()
         }
+    
+    def get_human_readable_transcript(self, lang: str, transcript_db_path: str=None) -> str:
+        """Generate a human readable transcript string in the desired language."""
+        lines_output = []
+        if transcript_db_path and os.path.exists(transcript_db_path):
+            with open(transcript_db_path, 'rb') as pkl_file:
+                lines = pickle.load(pkl_file)
+        else:
+            lines = self._lines
+        
+        for line in lines:
+            # Format begin and end time
+            beg_formatted = self._format_time(line['beg'])
+            end_formatted = self._format_time(line['end'])
+            time_range = f"{beg_formatted} - {end_formatted}"
+            
+            # Prepare speaker label if it is known
+            speaker_label = ""
+            if line.get("speaker", -1) != -1:
+                speaker_label = f"{line['speaker']}: "
+            
+            # Assemble text sentences depending on lang
+            if lang == self._source_lang:
+                # Use original sentences unconditionally
+                text = " ".join(sentence['sentence'] for sentence in line.get('sentences', []))
+            else:
+                # Only include translated sentences where available (non-empty)
+                text = " ".join(
+                    sentence[f"sentence_{lang}"]
+                    for sentence in line.get('sentences', [])
+                    if sentence.get(f"sentence_{lang}")
+                )
+            
+            # Combine everything for the line
+            lines_output.append(f"[{speaker_label}{time_range}]\n{text}")
+        
+        # Join all lines into one string with newlines
+        return "\n".join(lines_output)
 
     def _add_to_translation_queue(self, line_idx, sent_idx, sentence):
         # Find existing entry for this (line_idx, sent_idx)
@@ -287,8 +353,8 @@ class TranscriptionManager:
         with open(f'{self.log_directory}/n_lines_dump.json', 'w', encoding="utf-8") as f:
             f.write(json.dumps({
                 'last_lines': self.get_last_n_lines(3),
-                'incomplete_sentence': self.incomplete_sentence,
-                'buffer_transcription': self.buffer_transcription
+                'incomplete_sentence': self._incomplete_sentence,
+                'buffer_transcription': self._buffer_transcription
             }))
 
         try:
@@ -317,11 +383,11 @@ class TranscriptionManager:
                             f.write(f"\tSENT {sent_idx}: {repr(sent['sentence'])}\n")
 
                 # Log incomplete sentence if present
-                if hasattr(self, 'incomplete_sentence') and self.incomplete_sentence:
-                    f.write(f"INCOMPLETE SENT: {self.incomplete_sentence}\n")
+                if hasattr(self, 'incomplete_sentence') and self._incomplete_sentence:
+                    f.write(f"INCOMPLETE SENT: {self._incomplete_sentence}\n")
                 # Log buffer transcription if present
-                if self.buffer_transcription:
-                    f.write(f"BUFFER: {self.buffer_transcription}\n")
+                if self._buffer_transcription:
+                    f.write(f"BUFFER: {self._buffer_transcription}\n")
             self.logger.debug("Transcript updated and logged to file.")
         except Exception as e:
             self.logger.error(f"Failed to write transcript to {self.log_path}: {e}")

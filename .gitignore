@@ -7,3 +7,4 @@
 .idea
 poetry.toml
 src/db/sessions/
+/transcripts_db
