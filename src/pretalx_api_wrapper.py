@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, time
+
 import dateutil.parser
 import pytz
 import requests
@@ -67,7 +68,7 @@ class PretalxAPI:
 class APIError(Exception):
     pass
 
-# Usage EXample
+# Usage Example
 pretalx = PretalxAPI(json_url='https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json')
 print(pretalx.conference.__dict__)
 pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
