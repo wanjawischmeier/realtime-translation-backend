@@ -4,6 +4,7 @@ import dateutil.parser
 import pytz
 import requests
 
+
 class Track:
     def __init__(self, name:str, color:str):
         self.name = name
