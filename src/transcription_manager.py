@@ -3,6 +3,7 @@ import logging
 import json
 import os
 from rolling_average import RollingAverage
+from connection_manager import ConnectionManager
 
 # Initialize tokenizer
 import nltk
@@ -33,25 +34,27 @@ punkt_language_map = {
 
 
 class TranscriptionManager:
-    def __init__(self, source_lang, room_id="default_room", log_directory="logs", compare_depth=10):
+    def __init__(self, source_lang: str, connection_manager: ConnectionManager, room_id="default_room", log_directory="logs", compare_depth=10, num_lines_to_broadcast=3):
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
 
         if not os.path.exists("logs"):
             os.mkdir("logs")
         self.logger = logging.getLogger("TranscriptionManager")
-        self.log_path = f'{log_directory}/transcript_{room_id}.txt'
+        self.log_directory = log_directory
         self.compare_depth = compare_depth
         self.source_lang = source_lang
+        self._connection_manager = connection_manager
         self.room_id = room_id
         self._punkt_lang = punkt_language_map.get(source_lang)
+        self._num_lines_to_broadcast = num_lines_to_broadcast
 
         self.rolling_transcription_delay = RollingAverage()
         self.rolling_translation_delay = RollingAverage()
 
         self.buffer_transcription = "" # Any text currently in the transcription buffer
         self.incomplete_sentence = "" # Any sentence that is out of the buffer but not completed
-        self.lines = []  # Each: {'beg', 'end', 'text', 'speaker', 'sentences': [ ... ]}
+        self._lines = []  # Each: {'beg', 'end', 'text', 'speaker', 'sentences': [ ... ]}
         self._to_translate = []  # Each: {'line_idx', 'sent_idx', 'sentence', 'translated_langs': set()}
 
         self.lock = threading.Lock()
@@ -100,12 +103,12 @@ class TranscriptionManager:
                 new_sentences_raw, incomplete_sentence = self._filter_complete_sentences(new_sentences_raw)
                 self.incomplete_sentence = incomplete_sentence
 
-                line_idx = len(self.lines) - len(incoming_lines) + i
-                if 0 <= line_idx < len(self.lines):
-                    if line_idx >= len(self.lines) - self.compare_depth:
-                        if text != self.lines[line_idx]['text']:
+                line_idx = len(self._lines) - len(incoming_lines) + i
+                if 0 <= line_idx < len(self._lines):
+                    if line_idx >= len(self._lines) - self.compare_depth:
+                        if text != self._lines[line_idx]['text']:
                             # Line has changed, compare old and new sentences
-                            old_sentences = self.lines[line_idx]['sentences']
+                            old_sentences = self._lines[line_idx]['sentences']
 
                             # Prepare new sentences list
                             new_sentences = []
@@ -125,7 +128,7 @@ class TranscriptionManager:
                                 new_sentences.append({'sentence': new_sentences_raw[j]})
 
                             # Update the line
-                            self.lines[line_idx].update({
+                            self._lines[line_idx].update({
                                 'beg': beg,
                                 'end': end,
                                 'text': text,
@@ -150,12 +153,17 @@ class TranscriptionManager:
                         'speaker': speaker,
                         'sentences': new_sentences
                     }
-                    self.lines.append(new_line)
+                    self._lines.append(new_line)
                     for j, sent in enumerate(new_sentences):
-                        self._add_to_translation_queue(len(self.lines) - 1, j, sent['sentence'])
+                        self._add_to_translation_queue(len(self._lines) - 1, j, sent['sentence'])
                     updated = True
 
             if updated:
+                # send last n lines of updated transcript to all connected clients
+                last_n_lines = self.get_last_n_lines(3)
+                self._connection_manager.broadcast(last_n_lines)
+
+                # logging for debugging
                 self._log_transcript_to_file()
                 self._log_to_translate()
 
@@ -181,7 +189,7 @@ class TranscriptionManager:
                 translation = result['translation']
 
                 try:
-                    line = self.lines[line_idx]
+                    line = self._lines[line_idx]
                     sent_obj = line['sentences'][sent_idx]
                     current_sentence = sent_obj['sentence']
                     if current_sentence == orig_sentence:
@@ -214,7 +222,7 @@ class TranscriptionManager:
 
     def get_full_transcript(self, lang=None):
         sents = []
-        for line in self.lines:
+        for line in self._lines:
             for sent in line['sentences']:
                 if lang and f'sentence_{lang}' in sent:
                     sents.append(sent[f'sentence_{lang}'])
@@ -224,13 +232,28 @@ class TranscriptionManager:
 
     def get_sentences(self, lang=None):
         sents = []
-        for line in self.lines:
+        for line in self._lines:
             for sent in line['sentences']:
                 if lang and f'sentence_{lang}' in sent:
                     sents.append(sent[f'sentence_{lang}'])
                 else:
                     sents.append(sent['sentence'])
         return sents
+    
+    def get_last_n_lines(self, n: int=None, include_raw_string=False):
+        if not n:   # default to using configured number of lines
+            n = self._num_lines_to_broadcast
+        
+        lines: list[dict[str, any]] = self._lines[-n:]
+        
+        if not include_raw_string:
+            # Create copies of each dict without the 'text' entry
+            lines = [
+                {k: v for k, v in line.items() if k != 'text'}
+                for line in lines
+            ]
+
+        return lines
 
     def get_stats(self) -> dict:
         return {
@@ -260,9 +283,17 @@ class TranscriptionManager:
         })
 
     def _log_transcript_to_file(self):
+        log_path = f'{self.log_directory}/transcript_{self.room_id}.txt'
+        with open(f'{self.log_directory}/n_lines_dump.json', 'w', encoding="utf-8") as f:
+            f.write(json.dumps({
+                'last_lines': self.get_last_n_lines(3),
+                'incomplete_sentence': self.incomplete_sentence,
+                'buffer_transcription': self.buffer_transcription
+            }))
+
         try:
-            with open(self.log_path, "w", encoding="utf-8") as f:
-                for line_idx, line in enumerate(self.lines):
+            with open(log_path, "w", encoding="utf-8") as f:
+                for line_idx, line in enumerate(self._lines):
                     line_info = (
                         f"LINE {line_idx} | beg: {line.get('beg')} | end: {line.get('end')} | "
                         f"speaker: {line.get('speaker')}"
@@ -296,6 +327,7 @@ class TranscriptionManager:
             self.logger.error(f"Failed to write transcript to {self.log_path}: {e}")
     
     def _log_to_translate(self):
+        log_path = f'{self.log_directory}/to_translate_{self.room_id}.txt'
         try:
             # Prepare a JSON-serializable version
             serializable = []
@@ -305,7 +337,7 @@ class TranscriptionManager:
                 entry_copy['translated_langs'] = list(entry_copy['translated_langs'])
                 serializable.append(entry_copy)
 
-            with open("logs/to_translate.txt", "w", encoding="utf-8") as f:
+            with open(log_path, "w", encoding="utf-8") as f:
                 json.dump(serializable, f, ensure_ascii=False, indent=2)
         except Exception as e:
             self.logger.error(f"Failed to write to logs/to_translate.txt: {e}")

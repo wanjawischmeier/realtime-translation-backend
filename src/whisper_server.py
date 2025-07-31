@@ -103,7 +103,7 @@ async def handle_websocket_results(websocket: WebSocket, results_generator):
 async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine, transcription_manager
 
-    transcription_manager = TranscriptionManager(args.source_lang)
+    transcription_manager = TranscriptionManager(args.source_lang, connection_manager)
     room_manager = RoomManager([transcription_manager])        # TODO: remove temporary
     translation_worker = TranslationWorker(
         room_manager, args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
