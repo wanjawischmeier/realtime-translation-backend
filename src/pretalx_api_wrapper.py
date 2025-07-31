@@ -46,7 +46,6 @@ class PretalxAPI:
         # Returns a list of ongoing events in this conference sorted by time
         self.ongoing_events = []
         today = datetime.fromisoformat(fake_now).date() if fake_now is not None else date.today()
-        print(today)
         for day in self.data['conference']['days']:
             for name, events in day['rooms'].items():
                 for event in events:
@@ -60,7 +59,6 @@ class PretalxAPI:
                         now_start_delta = (now - dateutil.parser.isoparse(event['date']))
                     else:
                         now_start_delta  = (datetime.fromisoformat(fake_now) - dateutil.parser.isoparse(event['date']))
-                    print(now_start_delta)
                     # Filter events to only include the ongoing events and those that start in less than 30 minutes
                     if now_start_delta.total_seconds() <= (720 * 60) and timedelta(minutes=-31) < now_start_delta < duration:
                         self.ongoing_events.append(event)
