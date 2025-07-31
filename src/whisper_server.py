@@ -1,10 +1,12 @@
+from typing import Union
+
 from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interface_html
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from transcription_manager import TranscriptionManager
-from translation_worker import TranslationWorker, RoomManager # TODO: remove temporary import
+from translation_worker import TranslationWorker
 from connection_manager import ConnectionManager
 import subprocess
 import argparse
@@ -19,7 +21,6 @@ parser.add_argument("--host", default="0.0.0.0", help="Host to bind FastAPI serv
 parser.add_argument("--port", type=int, default=8000, help="Port to bind FastAPI server")
 parser.add_argument("--libretranslate-url", default="http://127.0.0.1", help="LibreTranslate API URL")
 parser.add_argument("--libretranslate-port", type=int, default=5000, help="Port to bind LibreTranslate server")
-parser.add_argument("--source-lang", default="en", help="Source language for whisper model and translation")
 parser.add_argument("--target-lang", default="de", help="Target language for translation")
 parser.add_argument("--timeout", type=int, default=10, help="Timeout in seconds for audio inactivity")
 args, unknown = parser.parse_known_args()
@@ -27,9 +28,10 @@ args, unknown = parser.parse_known_args()
 # --- Logging ---
 logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
-
+room_manager = None
 connection_manager = None
 transcription_manager = None
+# --- Has to stay ---
 transcription_engine = None
 server_ready = False
 lt = None
@@ -81,6 +83,10 @@ async def health():
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
 
+@app.get("/rooms/{room_id}")
+async def get_room(room_id: int, source_lang:str):
+    return
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await connection_manager.connect(websocket)
@@ -96,7 +102,6 @@ async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine, transcription_manager
 
     transcription_manager = TranscriptionManager(args.source_lang)
-    room_manager = RoomManager([transcription_manager])        # TODO: remove temporary
     translation_worker = TranslationWorker(
         room_manager, args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
         lt_url=args.libretranslate_url, lt_port=args.libretranslate_port,

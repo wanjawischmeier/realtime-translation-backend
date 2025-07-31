@@ -10,17 +10,6 @@ class Track:
         self.name = name
         self.color = color
 
-class Event:
-    def __init__(self, code:str, title: str, track:str, location:str, url:str, description:str, organizer:str, do_not_record:bool):
-        self.id = code
-        self.title = title
-        self.track = track
-        self.location = location
-        self.url = url
-        self.do_not_record = do_not_record
-        self.organizer = organizer
-        self.description = description
-
 class Conference:
     def __init__(self, title: str, start: date, end: date, days: int, url: str, timezone: pytz.tzinfo,
                  colors: dict, tracks: list[Track]):
@@ -34,11 +23,11 @@ class Conference:
         self.tracks = tracks # Tracks are type of events
 
 class PretalxAPI:
-    def __init__(self, json_url):
-        self.json_url = 'https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json' #TODO move to config at some point
+    def __init__(self, json_url='https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json'):
+        self.json_url = json_url  #TODO move to config at some point
         self.data: dict = self.get_data()
         self.conference: Conference = self.get_conference()
-        self.ongoing_events = [Event]
+        self.ongoing_events = []
 
     def get_data(self) -> dict:
         # Retrieves Data from Pretalx-Server
@@ -73,15 +62,14 @@ class PretalxAPI:
                         now_start_delta  = (datetime.fromisoformat(fake_now) - dateutil.parser.isoparse(event['date']))
                     # Filter events to only include the ongoing events and those that start in less than 30 minutes
                     if now_start_delta.total_seconds() <= (720 * 60) and timedelta(minutes=-31) < now_start_delta < duration:
-                        eve = Event(event['code'], event['title'], event['track'], event['room'], event['url'], event['description'], event['persons'][0]['name'], event['do_not_record'])
-                        self.ongoing_events.append(eve)
+                         self.ongoing_events.append(event)
         self.ongoing_events.sort(key=lambda e: dateutil.parser.isoparse(e['date'])) # Sorts list by date
 
 class APIError(Exception):
     pass
 
 # Usage Example
-pretalx = PretalxAPI(json_url='https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json')
+pretalx = PretalxAPI()
 print(pretalx.conference.__dict__)
 pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
 [print(e) for e in pretalx.ongoing_events]
