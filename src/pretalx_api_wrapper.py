@@ -23,7 +23,7 @@ class Conference:
 
 class PretalxAPI:
     def __init__(self, json_url):
-        self.json_url = 'https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json'
+        self.json_url = 'https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json' #TODO move to config at some point
         self.data: dict = self.get_data()
         self.conference: Conference = self.get_conference()
         self.ongoing_events = []
@@ -42,19 +42,25 @@ class PretalxAPI:
         tracks = [Track(name=track['name'], color=track['color']) for track in data['tracks']]
         return Conference(title=data['title'], start=data['start'], end=data['end'], days=data['daysCount'], url=url, timezone=pytz.timezone(data['time_zone_name']), colors=data['colors'], tracks=tracks)
 
-    def get_ongoing_events(self):
+    def get_ongoing_events(self, fake_now:str=None):
         # Returns a list of ongoing events in this conference sorted by time
         self.ongoing_events = []
+        today = datetime.fromisoformat(fake_now).date() if fake_now is not None else date.today()
+        print(today)
         for day in self.data['conference']['days']:
             for name, events in day['rooms'].items():
                 for event in events:
                     # Filter Events to specific day (today)
-                    if datetime.fromisoformat(event['date']).date() != date.fromisoformat('2025-08-17'):
+                    if datetime.fromisoformat(event['date']).date() != today:
                         continue
                     # Filter events to only ongoing events
                     now = datetime.now(tz=self.conference.timezone)
                     duration = timedelta(hours=time.fromisoformat(event['duration']).hour, minutes=time.fromisoformat(event['duration']).minute)
-                    now_start_delta = (datetime.fromisoformat('2025-08-17T10:40:00+02:00') - dateutil.parser.isoparse(event['date']))
+                    if fake_now is None:
+                        now_start_delta = (now - dateutil.parser.isoparse(event['date']))
+                    else:
+                        now_start_delta  = (datetime.fromisoformat(fake_now) - dateutil.parser.isoparse(event['date']))
+                    print(now_start_delta)
                     # Filter events to only include the ongoing events and those that start in less than 30 minutes
                     if now_start_delta.total_seconds() <= (720 * 60) and timedelta(minutes=-31) < now_start_delta < duration:
                         self.ongoing_events.append(event)
@@ -63,7 +69,8 @@ class PretalxAPI:
 class APIError(Exception):
     pass
 
+# Usage EXample
 pretalx = PretalxAPI(json_url='https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json')
 print(pretalx.conference.__dict__)
-pretalx.get_ongoing_events()
+pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
 [print(e) for e in pretalx.ongoing_events]
