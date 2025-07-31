@@ -4,10 +4,6 @@ import logging
 from transcription_manager import TranscriptionManager
 from libretranslatepy import LibreTranslateAPI
 
-class RoomManager():
-    def __init__(self, transcription_managers: list[TranscriptionManager]):
-        self.transcription_managers = transcription_managers
-
 class TranslationWorker(threading.Thread):
     def __init__(self, room_manager: RoomManager, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
         super().__init__()
