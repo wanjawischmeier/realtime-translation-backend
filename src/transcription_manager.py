@@ -1,5 +1,6 @@
 import threading
 import logging
+import asyncio
 import pickle
 import json
 import os
@@ -230,7 +231,9 @@ class TranscriptionManager:
     def _push_updated_transcript(self):
         # send last n lines of updated transcript to all connected clients
         last_n_lines = self.get_last_n_lines(3)
-        # self._connection_manager.broadcast(last_n_lines)
+        asyncio.create_task(
+            self._connection_manager.broadcast(last_n_lines)
+        )
 
         # logging for debugging
         self._log_transcript_to_file()
