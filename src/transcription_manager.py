@@ -33,16 +33,17 @@ punkt_language_map = {
 
 
 class TranscriptionManager:
-    def __init__(self, source_lang, log_path="logs/transcript.txt", compare_depth=10):
+    def __init__(self, source_lang, room_id="default_room", log_directory="logs", compare_depth=10):
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
 
         if not os.path.exists("logs"):
             os.mkdir("logs")
         self.logger = logging.getLogger("TranscriptionManager")
-        self.log_path = log_path
+        self.log_path = f'{log_directory}/transcript_{room_id}.txt'
         self.compare_depth = compare_depth
         self.source_lang = source_lang
+        self.room_id = room_id
         self._punkt_lang = punkt_language_map.get(source_lang)
 
         self.rolling_transcription_delay = RollingAverage()
