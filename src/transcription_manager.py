@@ -37,8 +37,7 @@ punkt_language_map = {
 
 
 class TranscriptionManager:
-    def __init__(self, source_lang: str, connection_manager: ConnectionManager,
-                 transcripts_db_directory="transcripts_db", log_directory="logs",
+    def __init__(self, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs",
                  room_id="default_room", compare_depth=10, num_lines_to_broadcast=3):
         
         if not source_lang in punkt_language_map:
@@ -57,10 +56,10 @@ class TranscriptionManager:
         self.log_directory = log_directory
         self.compare_depth = compare_depth
         self._source_lang = source_lang
-        self._connection_manager = connection_manager
         self.room_id = room_id
         self._punkt_lang = punkt_language_map.get(source_lang)
         self._num_lines_to_broadcast = num_lines_to_broadcast
+        self._queue = asyncio.Queue()
 
         self.rolling_transcription_delay = RollingAverage()
         self.rolling_translation_delay = RollingAverage()
@@ -106,7 +105,8 @@ class TranscriptionManager:
 
     def submit_chunk(self, chunk):
         with self.lock:
-            updated = self._buffer_transcription != chunk.get('buffer_transcription', '')
+            # updated = self._buffer_transcription != chunk.get('buffer_transcription', '')
+            updated = False # Don't update on buffer updates
             self._buffer_transcription = chunk.get('buffer_transcription', '')
             incoming_lines = chunk.get('lines', [])
             self.rolling_transcription_delay.add(chunk['remaining_time_transcription'])
@@ -227,13 +227,29 @@ class TranscriptionManager:
                     )
 
             self._push_updated_transcript()
+
+    async def transcript_generator(self):
+        while True:
+            # Wait for the next result from the queue asynchronously
+            result = await self._queue.get()
+
+            # Optionally handle shutdown or sentinel value signaling completion
+            if result is None:
+                break
+
+            yield result
+        
+        self.logger.info('Transcript generator terminated')
     
-    def _push_updated_transcript(self):
+    def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
         last_n_lines = self.get_last_n_lines(3)
-        asyncio.create_task(
-            self._connection_manager.broadcast(last_n_lines)
-        )
+        if broadcast and (last_n_lines or self._incomplete_sentence):
+            # Put the new result in the async queue
+            self._queue.put_nowait({
+                'last_n_lines': last_n_lines,
+                'incomplete_sentence': self._incomplete_sentence
+            })
 
         # logging for debugging
         self._log_transcript_to_file()

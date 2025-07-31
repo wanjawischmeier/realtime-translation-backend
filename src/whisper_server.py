@@ -28,7 +28,7 @@ args, unknown = parser.parse_known_args()
 logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
 
-connection_manager = ConnectionManager()
+connection_manager = None
 transcription_manager = None
 transcription_engine = None
 server_ready = False
@@ -80,7 +80,7 @@ async def health():
         return JSONResponse({"status": "ok"}, status_code=200)
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
-    
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await connection_manager.connect(websocket)
@@ -89,21 +89,13 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             await asyncio.sleep(60)  # Just keep the connection alive
     except WebSocketDisconnect:
-        connection_manager.disconnect(websocket)
-
-async def handle_websocket_results(websocket: WebSocket, results_generator):
-    async for response in results_generator:
-        # print(response)
-        transcription_manager.submit_chunk(response)
-        await websocket.send_json(response)
-        
-    await websocket.send_json({"type": "ready_to_stop"})
+        connection_manager.remove_client(websocket)
 
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine, transcription_manager
 
-    transcription_manager = TranscriptionManager(args.source_lang, connection_manager)
+    transcription_manager = TranscriptionManager(args.source_lang)
     room_manager = RoomManager([transcription_manager])        # TODO: remove temporary
     translation_worker = TranslationWorker(
         room_manager, args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
@@ -112,21 +104,12 @@ async def websocket_endpoint(websocket: WebSocket):
     )
     translation_worker.start()
 
+    # TODO: check websocket.headers.get or smth like that
     audio_processor = AudioProcessor(transcription_engine=transcription_engine)
-    results_generator = await audio_processor.create_tasks()
-    results_task = asyncio.create_task(
-        handle_websocket_results(websocket, results_generator)
-    )
+    whisper_generator = await audio_processor.create_tasks()
 
-    await websocket.accept()
-    try:
-        while True:
-            message = await websocket.receive_bytes()
-            await audio_processor.process_audio(message)
-    except WebSocketDisconnect:
-        translation_worker.stop()
-        results_task.cancel()
-
+    connection_manager = ConnectionManager(transcription_manager, audio_processor, whisper_generator)
+    await connection_manager.connect_and_listen_to_host(websocket)
 
 if __name__ == "__main__":
     import uvicorn
