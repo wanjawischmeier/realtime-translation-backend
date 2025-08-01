@@ -44,23 +44,15 @@ class ConnectionManager:
             self.logger.info('Host disconnected')
 
     async def connect_client(self, websocket: WebSocket):
-        await websocket.accept()
         self._clients.append(websocket)
         self.logger.info(f'Client {len(self._clients)} connected')
 
         try:
             while True:
-                await asyncio.sleep(60)  # Just keep the connection alive
+                await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
         except WebSocketDisconnect:
             self._clients.remove(websocket)
-            self.logger.info(f'Client {len(self._clients) + 1} disconnected')
-
-    async def broadcast_json(self, message: dict, broadcast_to_host=True):
-        for connection in self._clients:
-            await connection.send_json(message)
-        
-        if broadcast_to_host:
-            await self._host.send_json(message)
+            self.logger.info(f'Client {len(self._clients) + 1} disconnected') # TODO: fix recognition of client detection
     
     async def _handle_whisper_generator(self, whisper_generator):
         async for response in whisper_generator:
@@ -78,7 +70,7 @@ class ConnectionManager:
             # await websocket.send_json(response)
             # TODO: sent to all clients
             for client in self._clients:
-                client.send_json(transcript)
+                await client.send_json(transcript)
             
         # await websocket.send_json({'type': 'ready_to_stop'})
         self.logger.info('Results generator closed')
