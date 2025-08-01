@@ -29,7 +29,7 @@ class ConnectionManager:
             return
         
         self._host = websocket
-        # self._clients.add(self._host)   # Host also wants to recieve transcript TODO: add this once host is no longer dev frontend
+        self._clients.append(self._host)   # Host also wants to recieve transcript
         LOGGER.info('Host connected')
 
         try:
@@ -56,9 +56,8 @@ class ConnectionManager:
     
     async def _handle_whisper_generator(self, whisper_generator):
         async for response in whisper_generator:
-            # print(response)
             self._transcription_manager.submit_chunk(response)
-            await self._host.send_json(response) # TODO: remove if host is no longer dev frontend
+            # await self._host.send_json(response) # TODO: remove if host is no longer dev frontend
             
         await self._host.send_json({"type": "ready_to_stop"})
         self._whisper_generator_handler_task.cancel() # TODO: check if this is necessary/working
@@ -67,12 +66,12 @@ class ConnectionManager:
         async for transcript in transcript_generator:
             print('Result:')
             print(transcript)
-            # await websocket.send_json(response)
-            # TODO: sent to all clients
+            
             for client in self._clients:
                 await client.send_json(transcript)
-            
-        # await websocket.send_json({'type': 'ready_to_stop'})
+        
+        for client in self._clients: # TODO: implement this in the frontend?
+            await client.send_json({'type': 'ready_to_stop'})
         LOGGER.info('Results generator closed')
         self._transcript_generator_handler_task.cancel() # TODO: check if this is necessary/working
 
