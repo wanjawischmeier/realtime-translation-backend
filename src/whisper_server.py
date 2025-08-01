@@ -117,11 +117,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
     room_id = 'dev_room_id'
     source_lang = 'de'
-    translation_worker = TranslationWorker('en',    # TODO: implement multiple target langs
-        poll_interval=1
-    )
-    translation_worker.start()
-
     await room_manager.activate_room(websocket, room_id, source_lang, transcription_engine)
 
 if __name__ == "__main__":
