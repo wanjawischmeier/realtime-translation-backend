@@ -1,10 +1,14 @@
 import asyncio
 import logging
+
 from fastapi import WebSocket, WebSocketDisconnect
 from whisperlivekit import AudioProcessor
 
+from src.transcription_manager import TranscriptionManager
+
+
 class ConnectionManager:
-    def __init__(self, transcription_manager, audio_processor: AudioProcessor, whisper_generator):
+    def __init__(self, transcription_manager:TranscriptionManager, audio_processor: AudioProcessor, whisper_generator):
         self._transcription_manager = transcription_manager
         self._audio_processor = audio_processor
         self._host: WebSocket = None
