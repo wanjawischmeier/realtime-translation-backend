@@ -13,6 +13,8 @@ try:
 except FileNotFoundError:
     LOGGER.exception('Config File not Found:', CONFIG_FILE); exit()
 
+HOST_PASSWORD: Final[str] = CONFIG['host_password']
+
 # Pretalx-Section
 JSON_URL: Final[str] = CONFIG['pretalx']['json_url']
 CACHE_TIME: Final[int] = CONFIG['pretalx']['cache_time']
