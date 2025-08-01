@@ -5,19 +5,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interface_html
+from whisperlivekit import TranscriptionEngine, get_web_interface_html
 
-from connection_manager import ConnectionManager
-from io_config.cli import MODEL, DIARIZATION, SOURCE_LANG, TARGET_LANG
+from io_config.cli import MODEL, DIARIZATION, SOURCE_LANG
 from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT
 from io_config.logger import LOGGER
 from room_manager import room_manager
-from transcription_manager import TranscriptionManager
-from translation_worker import TranslationWorker
 
-global transcr_manager
-conn_manager: ConnectionManager = None
-transcr_manager: TranscriptionManager = None
 # --- Has to stay ---
 transcription_engine = None
 server_ready = False
@@ -83,7 +77,7 @@ async def get_room(websocket: WebSocket):
 
 @app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}/{password}")
 async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str, password: str):
-    global conn_manager, transcription_engine
+    global transcription_engine
 
     await websocket.accept()
 
@@ -104,7 +98,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
 
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
-    global conn_manager, transcription_engine
+    global transcription_engine
     await websocket.accept()
 
     room_id = 'dev_room_id'
