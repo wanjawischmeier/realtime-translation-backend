@@ -10,7 +10,6 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interface_html
 
 from connection_manager import ConnectionManager
-from room_manager import room_manager
 from transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
 
