@@ -1,15 +1,16 @@
-import threading
-import logging
 import asyncio
-import pickle
 import json
 import os
+import pickle
+import threading
 from datetime import datetime
-from rolling_average import RollingAverage
-from connection_manager import ConnectionManager
 
 # Initialize tokenizer
 import nltk
+
+from io_config.logger import LOGGER
+from rolling_average import RollingAverage
+
 nltk.download('punkt')
 nltk.download('punkt_tab')
 from nltk.tokenize import sent_tokenize
@@ -38,7 +39,7 @@ punkt_language_map = {
 
 class TranscriptionManager:
     def __init__(self, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs",
-                 room_id="default_room", compare_depth=10, num_lines_to_broadcast=3):
+                 room_id="default_room", compare_depth=10, num_sentences_to_broadcast=20):
         
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
@@ -49,16 +50,15 @@ class TranscriptionManager:
         if not os.path.exists(log_directory):
             os.mkdir(log_directory)
 
-        self.logger = logging.getLogger("TranscriptionManager")
-
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
         self._transcript_db_path = f"{transcripts_db_directory}/{timestamp}.pkl"
         self.log_directory = log_directory
+        self.room_id = room_id
+        self.log_path = f'{log_directory}/to_translate_{self.room_id}.txt'
         self.compare_depth = compare_depth
         self._source_lang = source_lang
-        self.room_id = room_id
         self._punkt_lang = punkt_language_map.get(source_lang)
-        self._num_lines_to_broadcast = num_lines_to_broadcast
+        self._num_sentences_to_broadcast = num_sentences_to_broadcast
         self._queue = asyncio.Queue()
 
         self.rolling_transcription_delay = RollingAverage()
@@ -78,10 +78,10 @@ class TranscriptionManager:
                 hours, minutes, seconds = parts
                 return hours * 3600 + minutes * 60 + seconds
             else:
-                self.logger.error(f"Unexpected time format: {time_str}")
+                LOGGER.error(f"Unexpected time format: {time_str}")
                 return 0
         except Exception as e:
-            self.logger.error(f"Error parsing time string '{time_str}': {e}")
+            LOGGER.error(f"Error parsing time string '{time_str}': {e}")
             return 0
         
     def _format_time(self, seconds: int) -> str:
@@ -142,13 +142,20 @@ class TranscriptionManager:
                                     new_sentences.append(old_sentence_obj)
                                 else:
                                     # Sentence changed: reset translations
-                                    new_sentences.append({'sentence': new_sentence_text})
+                                    new_sentences.append({
+                                        'sent_idx': len(new_sentences),
+                                        'sentence': new_sentence_text
+                                    })
                             # Step 2: Handle added sentences
                             for j in range(min_len, len(new_sentences_raw)):
-                                new_sentences.append({'sentence': new_sentences_raw[j]})
+                                new_sentences.append({
+                                    'sent_idx': len(new_sentences),
+                                    'sentence': new_sentences_raw[j]
+                                })
 
                             # Update the line
                             self._lines[line_idx].update({
+                                'line_idx': line_idx,
                                 'beg': beg,
                                 'end': end,
                                 'text': text,
@@ -157,8 +164,8 @@ class TranscriptionManager:
                             })
 
                             # Update _to_translate for each sentence
-                            for j, sent in enumerate(new_sentences):
-                                self._add_to_translation_queue(line_idx, j, sent['sentence'])
+                            for sent in new_sentences:
+                                self._add_to_translation_queue(line_idx, sent['sent_idx'], sent['sentence'])
                             updated = True
                 else:
                     # New line
@@ -167,6 +174,7 @@ class TranscriptionManager:
                         new_sent = {'sentence': sent}
                         new_sentences.append(new_sent)
                     new_line = {
+                        'line_idx': len(self._lines),
                         'beg': beg,
                         'end': end,
                         'text': text,
@@ -174,8 +182,8 @@ class TranscriptionManager:
                         'sentences': new_sentences
                     }
                     self._lines.append(new_line)
-                    for j, sent in enumerate(new_sentences):
-                        self._add_to_translation_queue(len(self._lines) - 1, j, sent['sentence'])
+                    for sent in new_sentences:
+                        self._add_to_translation_queue(len(self._lines) - 1, sent['sent_idx'], sent['sentence'])
                     updated = True
 
             if updated: # only push if changes occured
@@ -217,12 +225,12 @@ class TranscriptionManager:
                                 entry['translated_langs'].add(lang)
                                 break
                     else:
-                        self.logger.warning(
+                        LOGGER.warning(
                             f"Discarded translation: sentence changed at line {line_idx}, sent {sent_idx}."
                             f" Old: '{orig_sentence}' New: '{current_sentence}'"
                         )
                 except IndexError:
-                    self.logger.warning(
+                    LOGGER.warning(
                         f"Discarded translation: line_idx {line_idx} or sent_idx {sent_idx} out of range."
                     )
 
@@ -239,15 +247,15 @@ class TranscriptionManager:
 
             yield result
         
-        self.logger.info('Transcript generator terminated')
+        LOGGER.info('Transcript generator terminated')
     
     def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
-        last_n_lines = self.get_last_n_lines(3)
-        if broadcast and (last_n_lines or self._incomplete_sentence):
+        last_n_sents = self.get_last_n_sentences()
+        if broadcast and (last_n_sents or self._incomplete_sentence):
             # Put the new result in the async queue
             self._queue.put_nowait({
-                'last_n_lines': last_n_lines,
+                'last_n_sents': last_n_sents,
                 'incomplete_sentence': self._incomplete_sentence
             })
 
@@ -301,6 +309,46 @@ class TranscriptionManager:
             ]
 
         return lines
+
+    def get_last_n_sentences(self, n: int = None, include_raw_string=False):
+        if not n: # # default to using configured number of sentences
+            n = self._num_sentences_to_broadcast
+        
+        remaining = n
+        result_lines = []
+        
+        # Process lines in reverse order to gather sentences from the end
+        for line in reversed(self._lines):
+            sentences = line.get('sentences', [])
+            if not sentences:
+                continue
+            
+            # Take sentences from the end of this line up to 'remaining'
+            take_count = min(len(sentences), remaining)
+            
+            # Sentences to include from this line (take from the end)
+            selected_sentences = sentences[-take_count:]
+            
+            # Construct a new line dictionary to preserve structure
+            new_line = {
+                k: v for k, v in line.items() if k != 'sentences' and (include_raw_string or k != 'text')
+            }
+            
+            if include_raw_string:
+                new_line['text'] = line.get('text', '')
+            
+            new_line['sentences'] = selected_sentences
+            
+            result_lines.append(new_line)
+            
+            remaining -= take_count
+            if remaining <= 0:
+                break
+        
+        # We collected lines in reverse order, reverse back for normal reading order
+        result_lines.reverse()
+        
+        return result_lines
 
     def get_stats(self) -> dict:
         return {
@@ -357,7 +405,7 @@ class TranscriptionManager:
                     # Sentence changed, update text and reset translations
                     entry['sentence'] = sentence
                     entry['translated_langs'] = set()
-                    self.logger.debug(f"Changed sentence: at line {line_idx}, sent {sent_idx}, text: {sentence}")
+                    LOGGER.debug(f"Changed sentence: at line {line_idx}, sent {sent_idx}, text: {sentence}")
                     return
         # No entry found, add new
         self._to_translate.append({
@@ -368,7 +416,6 @@ class TranscriptionManager:
         })
 
     def _log_transcript_to_file(self):
-        log_path = f'{self.log_directory}/transcript_{self.room_id}.txt'
         with open(f'{self.log_directory}/n_lines_dump.json', 'w', encoding="utf-8") as f:
             f.write(json.dumps({
                 'last_lines': self.get_last_n_lines(3),
@@ -377,7 +424,7 @@ class TranscriptionManager:
             }))
 
         try:
-            with open(log_path, "w", encoding="utf-8") as f:
+            with open(self.log_path, "w", encoding="utf-8") as f:
                 for line_idx, line in enumerate(self._lines):
                     line_info = (
                         f"LINE {line_idx} | beg: {line.get('beg')} | end: {line.get('end')} | "
@@ -407,9 +454,9 @@ class TranscriptionManager:
                 # Log buffer transcription if present
                 if self._buffer_transcription:
                     f.write(f"BUFFER: {self._buffer_transcription}\n")
-            self.logger.debug("Transcript updated and logged to file.")
+            LOGGER.debug("Transcript updated and logged to file.")
         except Exception as e:
-            self.logger.error(f"Failed to write transcript to {self.log_path}: {e}")
+            LOGGER.error(f"Failed to write transcript to {self.log_path}: {e}")
     
     def _log_to_translate(self):
         log_path = f'{self.log_directory}/to_translate_{self.room_id}.txt'
@@ -422,7 +469,7 @@ class TranscriptionManager:
                 entry_copy['translated_langs'] = list(entry_copy['translated_langs'])
                 serializable.append(entry_copy)
 
-            with open(log_path, "w", encoding="utf-8") as f:
+            with open(self.log_path, "w", encoding="utf-8") as f:
                 json.dump(serializable, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            self.logger.error(f"Failed to write to logs/to_translate.txt: {e}")
+            LOGGER.error(f"Failed to write to logs/to_translate.txt: {e}")
