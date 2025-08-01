@@ -3,17 +3,11 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
-from transcription_manager import TranscriptionManager
-
-class RoomManager():
-    def __init__(self, transcription_managers: list[TranscriptionManager]):
-        self.transcription_managers = transcription_managers
-
+from src.room_manager import room_manager
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, room_manager: RoomManager, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
+    def __init__(self, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
         super().__init__()
-        self.room_manager = room_manager
         self.source_lang = source_lang
         self.target_langs = list(target_langs) if target_langs else []
         self.lt = LibreTranslateAPI(f"http://{lt_url}:{lt_port}")
@@ -44,7 +38,7 @@ class TranslationWorker(threading.Thread):
             cycle_start = time.time()
             try:
                 # Check translation queues of each transcription manager until a not empty one is found
-                for manager in self.room_manager.transcription_managers:
+                for manager in room_manager.transcription_managers:
                     to_translate = manager.poll_sentences_to_translate()
                     if to_translate:
                         transcription_manager = manager

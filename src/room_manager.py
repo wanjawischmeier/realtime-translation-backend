@@ -1,9 +1,13 @@
+from whisperlivekit import AudioProcessor
+
+from src.connection_manager import ConnectionManager
+from src.io.cli import TRANSCRIPTION_ENGINE
 from src.pretalx_api_wrapper import PretalxAPI
 from src.transcription_manager import TranscriptionManager
 
 
 class Room:
-    def __init__(self, code:str, title: str, track:str, location:str, url:str, description:str, organizer:str, do_not_record:bool, transcription_manager=None):
+    def __init__(self, code:str, title: str, track:str, location:str, url:str, description:str, organizer:str, do_not_record:bool, transcription_manager:TranscriptionManager=None, connection_manager:ConnectionManager=None, audio_processor:AudioProcessor=None):
         self.id = code
         self.title = title
         self.track = track
@@ -14,6 +18,8 @@ class Room:
         self.organizer = organizer
         self.description = description
         self.transcription_manager:TranscriptionManager = transcription_manager
+        self.connection_manager:ConnectionManager = connection_manager
+        self.audio_processor:AudioProcessor = audio_processor
 
 
 class RoomManager:
@@ -32,13 +38,16 @@ class RoomManager:
                 event['persons'][0]['name'], event['do_not_record'])
             self.current_rooms.append(room)
 
-    def activate_room(self, room_id:str, source_lang:str):
+    async def activate_room(self, room_id:str, source_lang:str):
         for room in self.current_rooms:
             if room_id != room.id:
                 continue
             else:
                 room.active = True
                 room.transcription_manager = TranscriptionManager(source_lang)
+                room.audio_processor = AudioProcessor(transcription_engine=TRANSCRIPTION_ENGINE)
+                whisper_generator = await room.audio_processor.create_tasks()
+                room.connection_manager = ConnectionManager(room.transcription_manager, room.audio_processor, whisper_generator)
                 self.transcription_managers.append(room.transcription_manager)
 
     def deactivate_room(self, room_id:str):
@@ -46,7 +55,7 @@ class RoomManager:
             if room_id != room.id:
                 continue
             else:
-                room.active = True
+                room.active = False
                 self.transcription_managers.pop(room.transcription_manager)
 
 room_manager = RoomManager(pretalx=PretalxAPI())

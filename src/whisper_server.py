@@ -29,6 +29,7 @@ args, unknown = parser.parse_known_args()
 # --- Logging ---
 logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
+
 global transcr_manager
 room_manager = None
 conn_manager: ConnectionManager = None
