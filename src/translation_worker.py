@@ -3,9 +3,7 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
-
 from src.room_manager import RoomManager
-
 
 class TranslationWorker(threading.Thread):
     def __init__(self, room_manager: RoomManager, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
