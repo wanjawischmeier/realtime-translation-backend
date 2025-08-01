@@ -3,6 +3,8 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
+
+from io_config.logger import LOGGER
 from room_manager import room_manager
 
 class TranslationWorker(threading.Thread):
@@ -14,21 +16,20 @@ class TranslationWorker(threading.Thread):
         self.poll_interval = poll_interval
         self.daemon = True
         self._stop_event = threading.Event()
-        self.logger = logging.getLogger("TranslationWorker")
 
     def add_target_lang(self, lang):
         if lang in self.target_langs:
-            self.logger.warning(f"Language '{lang}' is already in the target_langs list.")
+            LOGGER.warning(f"Language '{lang}' is already in the target_langs list.")
             return
         self.target_langs.append(lang)
-        self.logger.info(f"Added language '{lang}' to target_langs.")
+        LOGGER.info(f"Added language '{lang}' to target_langs.")
 
     def remove_target_lang(self, lang):
         if lang not in self.target_langs:
-            self.logger.warning(f"Language '{lang}' not found in target_langs.")
+            LOGGER.warning(f"Language '{lang}' not found in target_langs.")
             return
         self.target_langs.remove(lang)
-        self.logger.info(f"Removed language '{lang}' from target_langs.")
+        LOGGER.info(f"Removed language '{lang}' from target_langs.")
 
     def stop(self):
         self._stop_event.set()
@@ -47,7 +48,7 @@ class TranslationWorker(threading.Thread):
                         break
 
                 if not to_translate:
-                    self.logger.warning('Translation worker thread running without any transcription managers')
+                    LOGGER.warning('Translation worker thread running without any transcription managers')
 
                 for target_lang in self.target_langs:
                     translation_results = []
@@ -58,7 +59,7 @@ class TranslationWorker(threading.Thread):
                         try:
                             translation = self.lt.translate(sentence, source=self.source_lang, target=target_lang)
                         except Exception as e:
-                            self.logger.error(f"Translation error for '{sentence}' to '{target_lang}': {e}")
+                            LOGGER.error(f"Translation error for '{sentence}' to '{target_lang}': {e}")
                             continue
                         translation_results.append({
                             'line_idx': entry['line_idx'],
@@ -70,9 +71,9 @@ class TranslationWorker(threading.Thread):
                     if translation_results:
                         translation_time = time.time() - cycle_start
                         transcription_manager.submit_translation(translation_results, translation_time)
-                        self.logger.info(f"Submitted {len(translation_results)} translations to '{target_lang}' in {translation_time:.2f}s.")
+                        LOGGER.info(f"Submitted {len(translation_results)} translations to '{target_lang}' in {translation_time:.2f}s.")
             except Exception as e:
-                self.logger.error(f"Error in translation cycle: {e}")
+                LOGGER.error(f"Error in translation cycle: {e}")
 
             elapsed = time.time() - cycle_start
             sleep_time = self.poll_interval - elapsed
