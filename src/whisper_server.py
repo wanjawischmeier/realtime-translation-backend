@@ -22,6 +22,7 @@ parser.add_argument("--host", default="0.0.0.0", help="Host to bind FastAPI serv
 parser.add_argument("--port", type=int, default=8000, help="Port to bind FastAPI server")
 parser.add_argument("--libretranslate-url", default="http://127.0.0.1", help="LibreTranslate API URL")
 parser.add_argument("--libretranslate-port", type=int, default=5000, help="Port to bind LibreTranslate server")
+parser.add_argument("--source-lang", default="en", help="Source language for whisper model and translation")
 parser.add_argument("--target-lang", default="de", help="Target language for translation")
 parser.add_argument("--timeout", type=int, default=10, help="Timeout in seconds for audio inactivity")
 args, unknown = parser.parse_known_args()
@@ -35,12 +36,11 @@ transcription_manager = None
 # --- Has to stay ---
 transcription_engine = None
 server_ready = False
-lt = None
 
 # --- FastAPI App and Lifespan ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global transcription_engine, server_ready, lt
+    global transcription_engine, server_ready
     print(f"[INFO] Loading Whisper model: {args.model}, diarization={args.diarization}, language={args.source_lang}")
     transcription_engine = TranscriptionEngine(model=args.model, diarization=args.diarization, lan=args.source_lang) # buffer_trimming="sentence"
 
@@ -84,10 +84,37 @@ async def health():
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
 
-@app.get("/rooms/{room_id}")
-async def get_room(room_id: int, source_lang:str):
-    return
+@app.websocket("/room/{room_id}")
+async def get_room(websocket: WebSocket, room_id: str):
+    global connection_manager
 
+    await websocket.accept()
+    # role = websocket.headers.get('role')
+    role = 'host'
+    if not role:
+        await websocket.close(code=1003, reason='No desired role found in headers')
+    
+    if role == 'host':
+        # password = websocket.headers.get('password')
+        password = 'password'
+        if not password: # TODO: check password
+            await websocket.close(code=1003, reason='No desired role found in headers')
+            return
+        
+        # source_lang = websocket.query_params.get("source_lang")
+        source_lang = 'de'
+        if not source_lang:
+            await websocket.close(code=1003, reason='No desired role found in headers')
+        
+        transcription_manager = TranscriptionManager(args.source_lang)
+
+        audio_processor = AudioProcessor(transcription_engine=transcription_engine)
+        whisper_generator = await audio_processor.create_tasks()
+
+        connection_manager = ConnectionManager(transcription_manager, audio_processor, whisper_generator)
+        await connection_manager.listen_to_host(websocket)
+    return
+"""
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await connection_manager.connect(websocket)
@@ -97,10 +124,11 @@ async def websocket_endpoint(websocket: WebSocket):
             await asyncio.sleep(60)  # Just keep the connection alive
     except WebSocketDisconnect:
         connection_manager.remove_client(websocket)
-
+"""
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
     global transcription_engine, transcription_manager
+    await websocket.accept()
 
     transcription_manager = TranscriptionManager(args.source_lang)
     translation_worker = TranslationWorker(
@@ -115,7 +143,7 @@ async def websocket_endpoint(websocket: WebSocket):
     whisper_generator = await audio_processor.create_tasks()
 
     connection_manager = ConnectionManager(transcription_manager, audio_processor, whisper_generator)
-    await connection_manager.connect_and_listen_to_host(websocket)
+    await connection_manager.listen_to_host(websocket)
 
 if __name__ == "__main__":
     import uvicorn

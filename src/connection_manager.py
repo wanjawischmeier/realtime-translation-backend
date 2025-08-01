@@ -19,11 +19,11 @@ class ConnectionManager:
         )
         self.logger.info('Now listening for whisper and transcript generators')
 
-    async def connect_and_listen_to_host(self, websocket: WebSocket):
+    async def listen_to_host(self, websocket: WebSocket):
         if self._host:   # can't connect to multiple hosts at the same time
             await websocket.close(code=1003, reason='Multiple hosts not allowed')
+            return
         
-        await websocket.accept()
         self._host = websocket
         # self._clients.add(self._host)   # Host also wants to recieve transcript TODO: add this once host is no longer dev frontend
         self.logger.info('Host connected')
