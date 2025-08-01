@@ -3,7 +3,7 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
-from src.room_manager import room_manager
+from room_manager import room_manager
 
 class TranslationWorker(threading.Thread):
     def __init__(self, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
@@ -37,12 +37,17 @@ class TranslationWorker(threading.Thread):
         while not self._stop_event.is_set():
             cycle_start = time.time()
             try:
+                to_translate = []
+                
                 # Check translation queues of each transcription manager until a not empty one is found
                 for manager in room_manager.transcription_managers:
                     to_translate = manager.poll_sentences_to_translate()
                     if to_translate:
                         transcription_manager = manager
                         break
+
+                if not to_translate:
+                    self.logger.warning('Translation worker thread running without any transcription managers')
 
                 for target_lang in self.target_langs:
                     translation_results = []

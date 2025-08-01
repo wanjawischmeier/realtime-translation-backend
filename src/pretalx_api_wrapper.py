@@ -4,8 +4,8 @@ import dateutil.parser
 import pytz
 import requests
 
-from src.io.config import JSON_URL, CACHE_TIME
-from src.io.logger import LOGGER
+from io_config.config import JSON_URL, CACHE_TIME
+from io_config.logger import LOGGER
 
 
 class Track:

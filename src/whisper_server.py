@@ -11,7 +11,8 @@ from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interfac
 
 from connection_manager import ConnectionManager
 from transcription_manager import TranscriptionManager
-from translation_worker import TranslationWorker, RoomManager
+from translation_worker import TranslationWorker
+from room_manager import room_manager
 
 # --- Argument Parsing ---
 parser = argparse.ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
@@ -31,7 +32,6 @@ logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
 
 global transcr_manager
-room_manager = None
 conn_manager: ConnectionManager = None
 transcr_manager: TranscriptionManager = None
 # --- Has to stay ---
@@ -41,7 +41,7 @@ server_ready = False
 # --- FastAPI App and Lifespan ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global transcription_engine, server_ready
+    global room_manager, transcription_engine, server_ready
     print(f"[INFO] Loading Whisper model: {args.model}, diarization={args.diarization}, language={args.source_lang}")
     transcription_engine = TranscriptionEngine(model=args.model, diarization=args.diarization, lan=args.source_lang) # buffer_trimming="sentence"
 
@@ -132,24 +132,19 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
 
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
-    global conn_manager
+    global conn_manager, transcription_engine
     await websocket.accept()
 
-    transcr_manager = TranscriptionManager(args.source_lang)
-    room_manager = RoomManager([transcr_manager])
+    room_id = 'dev_room_id'
+    source_lang = 'de'
     translation_worker = TranslationWorker(
-        room_manager, args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
+        args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
         lt_url=args.libretranslate_url, lt_port=args.libretranslate_port,
         poll_interval=1
     )
     translation_worker.start()
 
-    # TODO: check websocket.headers.get or smth like that
-    audio_processor = AudioProcessor(transcription_engine=transcription_engine) # TODO: move to init
-    whisper_generator = await audio_processor.create_tasks()
-
-    conn_manager = ConnectionManager(transcr_manager, audio_processor, whisper_generator)
-    await conn_manager.listen_to_host(websocket)
+    await room_manager.activate_room(websocket, room_id, source_lang, transcription_engine)
 
 if __name__ == "__main__":
     import uvicorn
