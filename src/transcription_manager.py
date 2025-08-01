@@ -6,7 +6,6 @@ import json
 import os
 from datetime import datetime
 from rolling_average import RollingAverage
-from connection_manager import ConnectionManager
 
 # Initialize tokenizer
 import nltk
