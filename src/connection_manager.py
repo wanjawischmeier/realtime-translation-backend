@@ -4,7 +4,7 @@ import logging
 from fastapi import WebSocket, WebSocketDisconnect
 from whisperlivekit import AudioProcessor
 
-from src.transcription_manager import TranscriptionManager
+from transcription_manager import TranscriptionManager
 
 
 class ConnectionManager:
