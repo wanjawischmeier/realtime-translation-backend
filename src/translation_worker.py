@@ -1,21 +1,22 @@
 import threading
 import time
 
-import requests
 from libretranslatepy import LibreTranslateAPI
 
 from io_config.cli import SOURCE_LANG
 from io_config.config import LT_HOST, LT_PORT
 from io_config.logger import LOGGER
-from room_manager import room_manager
+from transcription_manager import TranscriptionManager
+
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, target_lang:str, poll_interval=1.0):
+    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0,):
         super().__init__()
-        self.target_lang = target_lang
+        self.target_langs = []
         self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
         self.poll_interval = poll_interval
         self.daemon = True
+        self.transcription_manager: TranscriptionManager = transcription_manager
         self._stop_event = threading.Event()
 
     def stop(self):
@@ -25,17 +26,8 @@ class TranslationWorker(threading.Thread):
         while not self._stop_event.is_set():
             cycle_start = time.time()
             try:
-                to_translate = []
-
-                # Check translation queues of each transcription manager until a not empty one is found
-                for manager in room_manager.transcription_managers:
-                    to_translate = manager.poll_sentences_to_translate()
-                    if to_translate:
-                        transcription_manager = manager
-                        break
-
-                if to_translate == None:
-                    LOGGER.warning('Translation worker thread running without any transcription managers')
+                # Check translation queue of transcription manager
+                to_translate = self.transcription_manager.poll_sentences_to_translate()
 
                 for target_lang in self.target_langs:
                     translation_results = []
@@ -57,7 +49,7 @@ class TranslationWorker(threading.Thread):
                         })
                     if translation_results:
                         translation_time = time.time() - cycle_start
-                        transcription_manager.submit_translation(translation_results, translation_time)
+                        self.transcription_manager.submit_translation(translation_results, translation_time)
                         LOGGER.info(f"Submitted {len(translation_results)} translations to '{target_lang}' in {translation_time:.2f}s.")
             except Exception as e:
                 LOGGER.error(f"Error in translation cycle: {e}")
