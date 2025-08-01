@@ -19,7 +19,7 @@ CACHE_TIME: Final[int] = CONFIG['pretalx']['cache_time']
 
 # FastAPI-Section
 API_HOST: Final[str] = CONFIG['fastapi']['host']
-API_Port: Final[int] = CONFIG['fastapi']['port']
+API_PORT: Final[int] = CONFIG['fastapi']['port']
 
 # LibreTranslate-Section
 LT_HOST: Final[str] = CONFIG['libretranslate']['host']
