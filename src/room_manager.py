@@ -1,9 +1,9 @@
 from whisperlivekit import AudioProcessor
 
 from src.connection_manager import ConnectionManager
+from src.io.cli import TRANSCRIPTION_ENGINE
 from src.pretalx_api_wrapper import PretalxAPI
 from src.transcription_manager import TranscriptionManager
-from src.whisper_server import transcription_engine
 
 
 class Room:
@@ -45,7 +45,7 @@ class RoomManager:
             else:
                 room.active = True
                 room.transcription_manager = TranscriptionManager(source_lang)
-                room.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
+                room.audio_processor = AudioProcessor(transcription_engine=TRANSCRIPTION_ENGINE)
                 whisper_generator = await room.audio_processor.create_tasks()
                 room.connection_manager = ConnectionManager(room.transcription_manager, room.audio_processor, whisper_generator)
                 self.transcription_managers.append(room.transcription_manager)

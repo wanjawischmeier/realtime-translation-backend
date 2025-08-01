@@ -2,6 +2,10 @@
 import sys
 from argparse import ArgumentParser, Namespace
 from typing import Final
+
+from whisperlivekit import TranscriptionEngine
+
+
 def get_args() -> Namespace:
     cli = ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
     cli.add_argument("-c", "--config", default='config.yml', dest='config_file', type=str,
@@ -26,4 +30,5 @@ MODEL: Final[str] = ARGS.model
 SOURCE_LANG: Final[str] = ARGS.source_lang
 TARGET_LANG: Final[str] = ARGS.taget_lang
 TIMEOUT: Final[int] = ARGS.timeout
+TRANSCRIPTION_ENGINE: Final[TranscriptionEngine]= TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=SOURCE_LANG) # buffer_trimming="sentence"
 
