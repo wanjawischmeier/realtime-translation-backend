@@ -1,0 +1,4 @@
+# Pretalx-Section
+pretalx:
+  json_url: 'https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json' # Schedule in JSON-Format
+  cache_time: 60 # Caches data from schedule for X minutes
