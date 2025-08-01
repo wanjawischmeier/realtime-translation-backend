@@ -1,14 +1,16 @@
-import threading
-import logging
 import asyncio
-import pickle
 import json
 import os
+import pickle
+import threading
 from datetime import datetime
-from rolling_average import RollingAverage
 
 # Initialize tokenizer
 import nltk
+
+from io_config.logger import LOGGER
+from rolling_average import RollingAverage
+
 nltk.download('punkt')
 nltk.download('punkt_tab')
 from nltk.tokenize import sent_tokenize
@@ -48,14 +50,13 @@ class TranscriptionManager:
         if not os.path.exists(log_directory):
             os.mkdir(log_directory)
 
-        self.logger = logging.getLogger("TranscriptionManager")
-
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
         self._transcript_db_path = f"{transcripts_db_directory}/{timestamp}.pkl"
         self.log_directory = log_directory
+        self.room_id = room_id
+        self.log_path = f'{log_directory}/to_translate_{self.room_id}.txt'
         self.compare_depth = compare_depth
         self._source_lang = source_lang
-        self.room_id = room_id
         self._punkt_lang = punkt_language_map.get(source_lang)
         self._num_sentences_to_broadcast = num_sentences_to_broadcast
         self._queue = asyncio.Queue()
@@ -77,10 +78,10 @@ class TranscriptionManager:
                 hours, minutes, seconds = parts
                 return hours * 3600 + minutes * 60 + seconds
             else:
-                self.logger.error(f"Unexpected time format: {time_str}")
+                LOGGER.error(f"Unexpected time format: {time_str}")
                 return 0
         except Exception as e:
-            self.logger.error(f"Error parsing time string '{time_str}': {e}")
+            LOGGER.error(f"Error parsing time string '{time_str}': {e}")
             return 0
         
     def _format_time(self, seconds: int) -> str:
@@ -224,12 +225,12 @@ class TranscriptionManager:
                                 entry['translated_langs'].add(lang)
                                 break
                     else:
-                        self.logger.warning(
+                        LOGGER.warning(
                             f"Discarded translation: sentence changed at line {line_idx}, sent {sent_idx}."
                             f" Old: '{orig_sentence}' New: '{current_sentence}'"
                         )
                 except IndexError:
-                    self.logger.warning(
+                    LOGGER.warning(
                         f"Discarded translation: line_idx {line_idx} or sent_idx {sent_idx} out of range."
                     )
 
@@ -246,7 +247,7 @@ class TranscriptionManager:
 
             yield result
         
-        self.logger.info('Transcript generator terminated')
+        LOGGER.info('Transcript generator terminated')
     
     def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
@@ -404,7 +405,7 @@ class TranscriptionManager:
                     # Sentence changed, update text and reset translations
                     entry['sentence'] = sentence
                     entry['translated_langs'] = set()
-                    self.logger.debug(f"Changed sentence: at line {line_idx}, sent {sent_idx}, text: {sentence}")
+                    LOGGER.debug(f"Changed sentence: at line {line_idx}, sent {sent_idx}, text: {sentence}")
                     return
         # No entry found, add new
         self._to_translate.append({
@@ -415,7 +416,6 @@ class TranscriptionManager:
         })
 
     def _log_transcript_to_file(self):
-        log_path = f'{self.log_directory}/transcript_{self.room_id}.txt'
         with open(f'{self.log_directory}/n_lines_dump.json', 'w', encoding="utf-8") as f:
             f.write(json.dumps({
                 'last_lines': self.get_last_n_lines(3),
@@ -424,7 +424,7 @@ class TranscriptionManager:
             }))
 
         try:
-            with open(log_path, "w", encoding="utf-8") as f:
+            with open(self.log_path, "w", encoding="utf-8") as f:
                 for line_idx, line in enumerate(self._lines):
                     line_info = (
                         f"LINE {line_idx} | beg: {line.get('beg')} | end: {line.get('end')} | "
@@ -454,9 +454,9 @@ class TranscriptionManager:
                 # Log buffer transcription if present
                 if self._buffer_transcription:
                     f.write(f"BUFFER: {self._buffer_transcription}\n")
-            self.logger.debug("Transcript updated and logged to file.")
+            LOGGER.debug("Transcript updated and logged to file.")
         except Exception as e:
-            self.logger.error(f"Failed to write transcript to {self.log_path}: {e}")
+            LOGGER.error(f"Failed to write transcript to {self.log_path}: {e}")
     
     def _log_to_translate(self):
         log_path = f'{self.log_directory}/to_translate_{self.room_id}.txt'
@@ -469,7 +469,7 @@ class TranscriptionManager:
                 entry_copy['translated_langs'] = list(entry_copy['translated_langs'])
                 serializable.append(entry_copy)
 
-            with open(log_path, "w", encoding="utf-8") as f:
+            with open(self.log_path, "w", encoding="utf-8") as f:
                 json.dump(serializable, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            self.logger.error(f"Failed to write to logs/to_translate.txt: {e}")
+            LOGGER.error(f"Failed to write to logs/to_translate.txt: {e}")
