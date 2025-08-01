@@ -3,7 +3,7 @@ from fastapi import WebSocket
 from whisperlivekit import AudioProcessor
 
 from connection_manager import ConnectionManager
-# from io.cli import TRANSCRIPTION_ENGINE # TODO: use this instead
+from io_config.config import AVAILABLE_LANGS
 from pretalx_api_wrapper import PretalxAPI
 from transcription_manager import TranscriptionManager
 from io_config.logger import LOGGER
@@ -33,7 +33,8 @@ class Room:
             'track': self.track,
             'location': self.location,
             'organizer': self.organizer,
-            'active': self.active
+            'active': self.active,
+            'available_langs': AVAILABLE_LANGS
         }
 
 

@@ -1,7 +1,7 @@
-import logging
 import threading
 import time
 
+import requests
 from libretranslatepy import LibreTranslateAPI
 
 from io_config.cli import SOURCE_LANG
@@ -10,27 +10,13 @@ from io_config.logger import LOGGER
 from room_manager import room_manager
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, target_langs=None, poll_interval=1.0):
+    def __init__(self, target_lang:str, poll_interval=1.0):
         super().__init__()
-        self.target_langs = list(target_langs) if target_langs else [] #TODO move to config list
+        self.target_lang = target_lang
         self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
         self.poll_interval = poll_interval
         self.daemon = True
         self._stop_event = threading.Event()
-
-    def add_target_lang(self, lang):
-        if lang in self.target_langs:
-            LOGGER.warning(f"Language '{lang}' is already in the target_langs list.")
-            return
-        self.target_langs.append(lang)
-        LOGGER.info(f"Added language '{lang}' to target_langs.")
-
-    def remove_target_lang(self, lang):
-        if lang not in self.target_langs:
-            LOGGER.warning(f"Language '{lang}' not found in target_langs.")
-            return
-        self.target_langs.remove(lang)
-        LOGGER.info(f"Removed language '{lang}' from target_langs.")
 
     def stop(self):
         self._stop_event.set()

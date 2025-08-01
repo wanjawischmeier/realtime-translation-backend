@@ -117,7 +117,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     room_id = 'dev_room_id'
     source_lang = 'de'
-    translation_worker = TranslationWorker([TARGET_LANG],    # TODO: implement multiple target langs
+    translation_worker = TranslationWorker('en',    # TODO: implement multiple target langs
         poll_interval=1
     )
     translation_worker.start()
