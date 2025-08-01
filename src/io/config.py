@@ -3,7 +3,7 @@ from typing import Final
 import yaml
 
 from cli import CONFIG_FILE
-from src.logger import LOGGER
+from io.logger import LOGGER
 
 # get Config from yml file
 LOGGER.debug('Loading config file...')
