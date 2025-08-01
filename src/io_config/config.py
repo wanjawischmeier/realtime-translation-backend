@@ -1,5 +1,6 @@
 from typing import Final
 
+import requests
 import yaml
 
 from io_config.cli import CONFIG_FILE
@@ -26,3 +27,12 @@ API_PORT: Final[int] = CONFIG['fastapi']['port']
 # LibreTranslate-Section
 LT_HOST: Final[str] = CONFIG['libretranslate']['host']
 LT_PORT: Final[int] = CONFIG['libretranslate']['port']
+LT_LANGS: Final[str] = CONFIG['libretranslate']['langs']
+def get_available_languages():
+    # Get Available Languages from libretranslate.com
+    LOGGER.info(f"Getting available languages from {LT_LANGS}...")
+    response = requests.get(LT_LANGS)
+    if response.status_code != 200:
+        LOGGER.error("Server returned HTTP status {code}".format(code=response.status_code))
+    return response.json()[0]['targets']
+AVAILABLE_LANGS: Final[list[str]] = get_available_languages()
