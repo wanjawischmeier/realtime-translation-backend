@@ -5,7 +5,6 @@ from typing import Final
 
 from whisperlivekit import TranscriptionEngine
 
-
 def get_args() -> Namespace:
     cli = ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
     cli.add_argument("-c", "--config", default='config.yml', dest='config_file', type=str,
@@ -19,9 +18,10 @@ def get_args() -> Namespace:
     # Show help if no argument specified
     if len(sys.argv) <= 1:
         sys.argv.append('--help')
-    return cli.parse_args()
+    args, unknown = cli.parse_known_args()
+    return args
 
-# These are run when this module is imported
+# These are initialized when this module is imported
 ARGS: Final[Namespace] = get_args()
 CONFIG_FILE: Final[str] = ARGS.config_file
 DIARIZATION: Final[bool] = ARGS.diarization
