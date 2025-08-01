@@ -83,11 +83,10 @@ async def get_room(websocket: WebSocket):
 
 @app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}/{password}")
 async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str, password: str):
-    global conn_manager
+    global conn_manager, transcription_engine
 
     await websocket.accept()
 
-    role = 'client'
     if not role or not (role == 'host' or role == 'client'):
         await websocket.close(code=1003, reason='No desired role found in headers')
     
@@ -96,17 +95,10 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
             await websocket.close(code=1003, reason='No desired role found in headers')
             return
         
-        source_lang = 'de'
         if not source_lang:
             await websocket.close(code=1003, reason='No source lang found in headers')
         
-        transcr_manager = TranscriptionManager(SOURCE_LANG)
-
-        audio_processor = AudioProcessor(transcription_engine=transcription_engine)
-        whisper_generator = await audio_processor.create_tasks()
-
-        conn_manager = ConnectionManager(transcr_manager, audio_processor, whisper_generator)
-        await conn_manager.listen_to_host(websocket)
+        await room_manager.activate_room(websocket, room_id, source_lang, transcription_engine)
     else:   # role == 'client'
         await room_manager.join_room_as_client(websocket, room_id, target_lang)
 

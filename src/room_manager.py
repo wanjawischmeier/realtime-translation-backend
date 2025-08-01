@@ -100,7 +100,8 @@ class RoomManager:
             if room_id != room.id:
                 continue
             
-            self.connection_manager = None
+            # TODO: properly close room
+            room.connection_manager = None
             room.active = False
             self.transcription_managers.remove(room.transcription_manager)
 
