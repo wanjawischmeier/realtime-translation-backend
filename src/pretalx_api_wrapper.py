@@ -4,6 +4,9 @@ import dateutil.parser
 import pytz
 import requests
 
+from io_config.config import JSON_URL, CACHE_TIME
+from io_config.logger import LOGGER
+
 
 class Track:
     def __init__(self, name:str, color:str):
@@ -23,21 +26,27 @@ class Conference:
         self.tracks = tracks # Tracks are type of events
 
 class PretalxAPI:
-    def __init__(self, json_url='https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json'):
-        self.json_url = json_url  #TODO move to config at some point
-        self.data: dict = self.get_data()
+    def __init__(self):
+        self.json_url = JSON_URL
+        self.cache_time = CACHE_TIME
+        self.data: dict = {}
+        self.update_data()
         self.conference: Conference = self.get_conference()
         self.ongoing_events = []
+        self.get_ongoing_events()
 
-    def get_data(self) -> dict:
-        # Retrieves Data from Pretalx-Server
+    # TODO Call this function regularly to update data using CACHE_TIME
+    def update_data(self):
+        # Retrieves Data from Pretalx-Server (Should be called regularly)
+        LOGGER.info(f"Updating and caching data from {self.json_url}...")
         response = requests.get(self.json_url)
         if response.status_code != 200:
             raise APIError("Server returned HTTP status {code}".format(code=response.status_code))
-        return response.json()['schedule']
+        self.data = response.json()['schedule']
 
     def get_conference(self) -> Conference:
         # Parses Data necessary to display the Conference in a nice way
+        LOGGER.debug(f"Parsing Conference data...")
         url = self.data['url']
         data = self.data['conference']
         tracks = [Track(name=track['name'], color=track['color']) for track in data['tracks']]
@@ -45,6 +54,7 @@ class PretalxAPI:
 
     def get_ongoing_events(self, fake_now:str=None):
         # Returns a list of ongoing events in this conference sorted by time
+        LOGGER.info("Getting ongoing_events from cached data...")
         self.ongoing_events = []
         today = datetime.fromisoformat(fake_now).date() if fake_now is not None else date.today()
         for day in self.data['conference']['days']:

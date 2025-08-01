@@ -1,0 +1,17 @@
+host_password: "Geschichteistmachbar!"
+
+# Pretalx-Section
+pretalx:
+  json_url: 'https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json' # Schedule in JSON-Format
+  cache_time: 60 # Caches data from schedule for X minutes
+
+# FastAPI-Section
+fastapi:
+  host: 127.0.0.1 #Host to bind FastAPI server
+  port: 8000 # Port to bind FastAPI server
+
+# LibreTranslate-Section
+libretranslate:
+  host: 127.0.0.1 # Host to bind LibreTranslate server
+  port: 5000 # Port to bind LibreTranslate server
+  langs: 'https://libretranslate.com/languages'
