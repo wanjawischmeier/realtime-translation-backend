@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from whisperlivekit import TranscriptionEngine, get_web_interface_html
 
 from io_config.cli import MODEL, DIARIZATION, SOURCE_LANG
-from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT
+from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
 from io_config.logger import LOGGER
 from room_manager import room_manager
 
@@ -85,7 +85,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         await websocket.close(code=1003, reason='No desired role found in headers')
     
     if role == 'host':
-        if not password or password != 'letmein': # TODO: check password
+        if not password or password != HOST_PASSWORD:
             await websocket.close(code=1003, reason='No desired role found in headers')
             return
         
