@@ -1,4 +1,5 @@
 from whisperlivekit import AudioProcessor
+
 from src.connection_manager import ConnectionManager
 from src.pretalx_api_wrapper import PretalxAPI
 from src.transcription_manager import TranscriptionManager
