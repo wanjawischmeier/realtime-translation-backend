@@ -4,6 +4,7 @@ import dateutil.parser
 import pytz
 import requests
 
+from config import JSON_URL, CACHE_TIME
 from src.logger import LOGGER
 
 
@@ -25,15 +26,16 @@ class Conference:
         self.tracks = tracks # Tracks are type of events
 
 class PretalxAPI:
-    def __init__(self, json_url='https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json'):
-        self.json_url = json_url  #TODO move to config at some point
+    def __init__(self):
+        self.json_url = JSON_URL
+        self.cache_time = CACHE_TIME
         self.data: dict = {}
         self.update_data()
         self.conference: Conference = self.get_conference()
         self.ongoing_events = []
         self.get_ongoing_events()
 
-    # TODO Call this function regularly to update data
+    # TODO Call this function regularly to update data using CACHE_TIME
     def update_data(self):
         # Retrieves Data from Pretalx-Server (Should be called regularly)
         LOGGER.info(f"Updating and caching data from {self.json_url}...")
