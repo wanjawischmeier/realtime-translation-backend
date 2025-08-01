@@ -1,3 +1,5 @@
+host_password: "Geschichteistmachbar!"
+
 # Pretalx-Section
 pretalx:
   json_url: 'https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json' # Schedule in JSON-Format
