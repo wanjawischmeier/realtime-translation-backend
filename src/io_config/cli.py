@@ -30,5 +30,3 @@ MODEL: Final[str] = ARGS.model
 SOURCE_LANG: Final[str] = ARGS.source_lang
 TARGET_LANG: Final[str] = ARGS.target_lang
 TIMEOUT: Final[int] = ARGS.timeout
-TRANSCRIPTION_ENGINE: Final[TranscriptionEngine]= TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=SOURCE_LANG) # buffer_trimming="sentence"
-

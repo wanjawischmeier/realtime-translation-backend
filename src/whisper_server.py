@@ -1,6 +1,4 @@
-import argparse
 import asyncio
-import logging
 import subprocess
 from contextlib import asynccontextmanager
 
@@ -10,26 +8,12 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interface_html
 
 from connection_manager import ConnectionManager
+from io_config.cli import MODEL, DIARIZATION, SOURCE_LANG, TARGET_LANG
+from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT
+from io_config.logger import LOGGER
+from room_manager import room_manager
 from transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
-from room_manager import room_manager
-
-# --- Argument Parsing ---
-parser = argparse.ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
-parser.add_argument("--model", default="small", help="Whisper model (tiny, small, medium, large, etc.)")
-parser.add_argument("--diarization", action="store_true", help="Enable speaker diarization")
-parser.add_argument("--host", default="0.0.0.0", help="Host to bind FastAPI server")
-parser.add_argument("--port", type=int, default=8000, help="Port to bind FastAPI server")
-parser.add_argument("--libretranslate-url", default="http://127.0.0.1", help="LibreTranslate API URL")
-parser.add_argument("--libretranslate-port", type=int, default=5000, help="Port to bind LibreTranslate server")
-parser.add_argument("--source-lang", default="en", help="Source language for whisper model and translation")
-parser.add_argument("--target-lang", default="de", help="Target language for translation")
-parser.add_argument("--timeout", type=int, default=10, help="Timeout in seconds for audio inactivity")
-args, unknown = parser.parse_known_args()
-
-# --- Logging ---
-logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
-logging.getLogger("faster_whisper").setLevel(logging.WARNING)
 
 global transcr_manager
 conn_manager: ConnectionManager = None
@@ -41,23 +25,23 @@ server_ready = False
 # --- FastAPI App and Lifespan ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global room_manager, transcription_engine, server_ready
-    print(f"[INFO] Loading Whisper model: {args.model}, diarization={args.diarization}, language={args.source_lang}")
-    transcription_engine = TranscriptionEngine(model=args.model, diarization=args.diarization, lan=args.source_lang) # buffer_trimming="sentence"
+    global transcription_engine, server_ready
+    LOGGER.info(f"Loading Whisper model: {MODEL}, diarization={DIARIZATION}, language={SOURCE_LANG}")
+    transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=SOURCE_LANG) # buffer_trimming="sentence"
 
-    print(f"[INFO] Starting LibreTranslate server: {args.libretranslate_url}:{args.libretranslate_port}")
+    LOGGER.info(f"Starting LibreTranslate server: {LT_HOST}:{LT_PORT}")
     # Start LibreTranslate as a subprocess
     libretranslate_proc = subprocess.Popen(
         [
             "poetry", "run", "libretranslate",
-            "--host", args.libretranslate_url,
-            "--port", str(args.libretranslate_port),
+            "--host", LT_HOST,
+            "--port", str(LT_PORT),
             "--load-only", "en,de"
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
-    print(f"[INFO] LibreTranslate server started with PID {libretranslate_proc.pid}")
+    LOGGER.info(f"LibreTranslate server started with PID {libretranslate_proc.pid}")
 
     server_ready = True
     try:
@@ -94,7 +78,7 @@ async def get_room(websocket: WebSocket):
         while True:
                 await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
     except WebSocketDisconnect:
-        logging.info(f'Client x disconnected')
+        LOGGER.info(f'Client x disconnected')
 
 
 @app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}/{password}")
@@ -116,7 +100,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         if not source_lang:
             await websocket.close(code=1003, reason='No source lang found in headers')
         
-        transcr_manager = TranscriptionManager(args.source_lang)
+        transcr_manager = TranscriptionManager(SOURCE_LANG)
 
         audio_processor = AudioProcessor(transcription_engine=transcription_engine)
         whisper_generator = await audio_processor.create_tasks()
@@ -127,7 +111,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         try:
             await conn_manager.connect_client(websocket)
         except Exception as e:
-            logging.warning(f'Client connection failed:\n{e}')
+            LOGGER.warning(f'Client connection failed:\n{e}')
             await websocket.close(code=1003, reason='No host connected')
 
 @app.websocket("/asr")
@@ -138,8 +122,8 @@ async def websocket_endpoint(websocket: WebSocket):
     room_id = 'dev_room_id'
     source_lang = 'de'
     translation_worker = TranslationWorker(
-        args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
-        lt_url=args.libretranslate_url, lt_port=args.libretranslate_port,
+        SOURCE_LANG, [TARGET_LANG],    # TODO: implement multiple target langs
+        lt_url=LT_HOST, lt_port=LT_PORT,
         poll_interval=1
     )
     translation_worker.start()
@@ -150,6 +134,6 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "whisper_server:app",
-        host=args.host,
-        port=args.port
+        host=API_HOST,
+        port=API_PORT
     )
