@@ -40,7 +40,7 @@ class TranslationWorker(threading.Thread):
             cycle_start = time.time()
             try:
                 to_translate = []
-                
+
                 # Check translation queues of each transcription manager until a not empty one is found
                 for manager in room_manager.transcription_managers:
                     to_translate = manager.poll_sentences_to_translate()
@@ -48,7 +48,7 @@ class TranslationWorker(threading.Thread):
                         transcription_manager = manager
                         break
 
-                if not to_translate:
+                if to_translate == None:
                     LOGGER.warning('Translation worker thread running without any transcription managers')
 
                 for target_lang in self.target_langs:

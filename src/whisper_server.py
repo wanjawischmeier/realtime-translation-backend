@@ -108,11 +108,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         conn_manager = ConnectionManager(transcr_manager, audio_processor, whisper_generator)
         await conn_manager.listen_to_host(websocket)
     else:   # role == 'client'
-        try:
-            await conn_manager.connect_client(websocket)
-        except Exception as e:
-            LOGGER.warning(f'Client connection failed:\n{e}')
-            await websocket.close(code=1003, reason='No host connected')
+        await room_manager.join_room_as_client(websocket, room_id, target_lang)
 
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
