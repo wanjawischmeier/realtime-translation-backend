@@ -4,6 +4,7 @@ import logging
 from fastapi import WebSocket, WebSocketDisconnect
 from whisperlivekit import AudioProcessor
 
+from io_config.logger import LOGGER
 from transcription_manager import TranscriptionManager
 
 
@@ -13,7 +14,6 @@ class ConnectionManager:
         self._audio_processor = audio_processor
         self._host: WebSocket = None
         self._clients: list[WebSocket] = []
-        self.logger = logging.getLogger('ConnectionManager')
         
         self._whisper_generator_handler_task = asyncio.create_task(
             self._handle_whisper_generator(whisper_generator)
@@ -21,7 +21,7 @@ class ConnectionManager:
         self._transcript_generator_handler_task = asyncio.create_task(
             self._handle_transcript_generator(transcription_manager.transcript_generator())
         )
-        self.logger.info('Now listening for whisper and transcript generators')
+        LOGGER.info('Now listening for whisper and transcript generators')
 
     async def listen_to_host(self, websocket: WebSocket):
         if self._host:   # can't connect to multiple hosts at the same time
@@ -30,7 +30,7 @@ class ConnectionManager:
         
         self._host = websocket
         # self._clients.add(self._host)   # Host also wants to recieve transcript TODO: add this once host is no longer dev frontend
-        self.logger.info('Host connected')
+        LOGGER.info('Host connected')
 
         try:
             while True:
@@ -41,18 +41,18 @@ class ConnectionManager:
             if self._host in self._clients:
                 self._clients.remove(self._host)
             self._host = None
-            self.logger.info('Host disconnected')
+            LOGGER.info('Host disconnected')
 
     async def connect_client(self, websocket: WebSocket):
         self._clients.append(websocket)
-        self.logger.info(f'Client {len(self._clients)} connected')
+        LOGGER.info(f'Client {len(self._clients)} connected')
 
         try:
             while True:
                 await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
         except WebSocketDisconnect:
             self._clients.remove(websocket)
-            self.logger.info(f'Client {len(self._clients) + 1} disconnected') # TODO: fix recognition of client detection
+            LOGGER.info(f'Client {len(self._clients) + 1} disconnected') # TODO: fix recognition of client detection
     
     async def _handle_whisper_generator(self, whisper_generator):
         async for response in whisper_generator:
@@ -73,7 +73,7 @@ class ConnectionManager:
                 await client.send_json(transcript)
             
         # await websocket.send_json({'type': 'ready_to_stop'})
-        self.logger.info('Results generator closed')
+        LOGGER.info('Results generator closed')
         self._transcript_generator_handler_task.cancel() # TODO: check if this is necessary/working
 
     def _cancel_existing_tasks(self):
