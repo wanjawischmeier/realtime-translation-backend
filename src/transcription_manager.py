@@ -6,7 +6,6 @@ import json
 import os
 from datetime import datetime
 from rolling_average import RollingAverage
-from connection_manager import ConnectionManager
 
 # Initialize tokenizer
 import nltk
@@ -38,7 +37,7 @@ punkt_language_map = {
 
 class TranscriptionManager:
     def __init__(self, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs",
-                 room_id="default_room", compare_depth=10, num_lines_to_broadcast=3):
+                 room_id="default_room", compare_depth=10, num_sentences_to_broadcast=20):
         
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
@@ -58,7 +57,7 @@ class TranscriptionManager:
         self._source_lang = source_lang
         self.room_id = room_id
         self._punkt_lang = punkt_language_map.get(source_lang)
-        self._num_lines_to_broadcast = num_lines_to_broadcast
+        self._num_sentences_to_broadcast = num_sentences_to_broadcast
         self._queue = asyncio.Queue()
 
         self.rolling_transcription_delay = RollingAverage()
@@ -142,13 +141,20 @@ class TranscriptionManager:
                                     new_sentences.append(old_sentence_obj)
                                 else:
                                     # Sentence changed: reset translations
-                                    new_sentences.append({'sentence': new_sentence_text})
+                                    new_sentences.append({
+                                        'sent_idx': len(new_sentences),
+                                        'sentence': new_sentence_text
+                                    })
                             # Step 2: Handle added sentences
                             for j in range(min_len, len(new_sentences_raw)):
-                                new_sentences.append({'sentence': new_sentences_raw[j]})
+                                new_sentences.append({
+                                    'sent_idx': len(new_sentences),
+                                    'sentence': new_sentences_raw[j]
+                                })
 
                             # Update the line
                             self._lines[line_idx].update({
+                                'line_idx': line_idx,
                                 'beg': beg,
                                 'end': end,
                                 'text': text,
@@ -157,8 +163,8 @@ class TranscriptionManager:
                             })
 
                             # Update _to_translate for each sentence
-                            for j, sent in enumerate(new_sentences):
-                                self._add_to_translation_queue(line_idx, j, sent['sentence'])
+                            for sent in new_sentences:
+                                self._add_to_translation_queue(line_idx, sent['sent_idx'], sent['sentence'])
                             updated = True
                 else:
                     # New line
@@ -167,6 +173,7 @@ class TranscriptionManager:
                         new_sent = {'sentence': sent}
                         new_sentences.append(new_sent)
                     new_line = {
+                        'line_idx': len(self._lines),
                         'beg': beg,
                         'end': end,
                         'text': text,
@@ -174,8 +181,8 @@ class TranscriptionManager:
                         'sentences': new_sentences
                     }
                     self._lines.append(new_line)
-                    for j, sent in enumerate(new_sentences):
-                        self._add_to_translation_queue(len(self._lines) - 1, j, sent['sentence'])
+                    for sent in new_sentences:
+                        self._add_to_translation_queue(len(self._lines) - 1, sent['sent_idx'], sent['sentence'])
                     updated = True
 
             if updated: # only push if changes occured
@@ -243,11 +250,11 @@ class TranscriptionManager:
     
     def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
-        last_n_lines = self.get_last_n_lines(3)
-        if broadcast and (last_n_lines or self._incomplete_sentence):
+        last_n_sents = self.get_last_n_sentences()
+        if broadcast and (last_n_sents or self._incomplete_sentence):
             # Put the new result in the async queue
             self._queue.put_nowait({
-                'last_n_lines': last_n_lines,
+                'last_n_sents': last_n_sents,
                 'incomplete_sentence': self._incomplete_sentence
             })
 
@@ -301,6 +308,46 @@ class TranscriptionManager:
             ]
 
         return lines
+
+    def get_last_n_sentences(self, n: int = None, include_raw_string=False):
+        if not n: # # default to using configured number of sentences
+            n = self._num_sentences_to_broadcast
+        
+        remaining = n
+        result_lines = []
+        
+        # Process lines in reverse order to gather sentences from the end
+        for line in reversed(self._lines):
+            sentences = line.get('sentences', [])
+            if not sentences:
+                continue
+            
+            # Take sentences from the end of this line up to 'remaining'
+            take_count = min(len(sentences), remaining)
+            
+            # Sentences to include from this line (take from the end)
+            selected_sentences = sentences[-take_count:]
+            
+            # Construct a new line dictionary to preserve structure
+            new_line = {
+                k: v for k, v in line.items() if k != 'sentences' and (include_raw_string or k != 'text')
+            }
+            
+            if include_raw_string:
+                new_line['text'] = line.get('text', '')
+            
+            new_line['sentences'] = selected_sentences
+            
+            result_lines.append(new_line)
+            
+            remaining -= take_count
+            if remaining <= 0:
+                break
+        
+        # We collected lines in reverse order, reverse back for normal reading order
+        result_lines.reverse()
+        
+        return result_lines
 
     def get_stats(self) -> dict:
         return {
