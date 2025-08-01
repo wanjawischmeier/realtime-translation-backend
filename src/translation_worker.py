@@ -4,15 +4,16 @@ import time
 
 from libretranslatepy import LibreTranslateAPI
 
+from io_config.cli import SOURCE_LANG
+from io_config.config import LT_HOST, LT_PORT
 from io_config.logger import LOGGER
 from room_manager import room_manager
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
+    def __init__(self, target_langs=None, poll_interval=1.0):
         super().__init__()
-        self.source_lang = source_lang
-        self.target_langs = list(target_langs) if target_langs else []
-        self.lt = LibreTranslateAPI(f"http://{lt_url}:{lt_port}")
+        self.target_langs = list(target_langs) if target_langs else [] #TODO move to config list
+        self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
         self.poll_interval = poll_interval
         self.daemon = True
         self._stop_event = threading.Event()
@@ -57,7 +58,7 @@ class TranslationWorker(threading.Thread):
                             continue
                         sentence = entry['sentence']
                         try:
-                            translation = self.lt.translate(sentence, source=self.source_lang, target=target_lang)
+                            translation = self.lt.translate(sentence, source=SOURCE_LANG, target=target_lang)
                         except Exception as e:
                             LOGGER.error(f"Translation error for '{sentence}' to '{target_lang}': {e}")
                             continue
