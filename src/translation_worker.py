@@ -3,10 +3,10 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
-from src.room_manager import RoomManager
+from src.room_manager import room_manager
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, room_manager: RoomManager, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
+    def __init__(self, source_lang: str, target_langs=None, lt_url="http://localhost", lt_port=5000, poll_interval=1.0):
         super().__init__()
         self.room_manager = room_manager
         self.source_lang = source_lang
