@@ -7,11 +7,12 @@ from io_config.config import AVAILABLE_LANGS
 from pretalx_api_wrapper import PretalxAPI
 from transcription_manager import TranscriptionManager
 from io_config.logger import LOGGER
+from translation_worker import TranslationWorker
 
 
 class Room:
     def __init__(self, room_id:str, title: str, track:str, location:str, url:str, description:str, organizer:str, do_not_record:bool,
-                 transcription_manager:TranscriptionManager=None, connection_manager:ConnectionManager=None, audio_processor:AudioProcessor=None):
+                 transcription_manager:TranscriptionManager=None, connection_manager:ConnectionManager=None, audio_processor:AudioProcessor=None, translation_worker:TranslationWorker=None):
         self.id = room_id
         self.title = title
         self.track = track
@@ -24,6 +25,7 @@ class Room:
         self.transcription_manager:TranscriptionManager = transcription_manager
         self.connection_manager:ConnectionManager = connection_manager
         self.audio_processor:AudioProcessor = audio_processor
+        self.translation_worker:TranslationWorker = translation_worker
     
     def get_data(self):
         return {
@@ -74,6 +76,7 @@ class RoomManager:
             whisper_generator = await room.audio_processor.create_tasks()
 
             room.connection_manager = ConnectionManager(room.transcription_manager, room.audio_processor, whisper_generator)
+            room.translation_worker = TranslationWorker(room.transcription_manager)
             await room.connection_manager.listen_to_host(websocket)
 
             self.deactivate_room(room_id)
@@ -86,10 +89,11 @@ class RoomManager:
             logging.info(f'Client joining room: {room_id}')
             try:
                 await room.connection_manager.connect_client(websocket)
+                room.translation_worker.target_langs.append(target_lang)
             except Exception as e:  # TODO: cleaner errror handling
                 LOGGER.warning(f'Client connection failed:\n{e}')
                 await websocket.close(code=1003, reason='No host connected')
-            # TODO: update target langs
+
 
     def deactivate_room(self, room_id:str):
         for room in self.current_rooms:
