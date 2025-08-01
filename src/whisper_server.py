@@ -11,7 +11,7 @@ from whisperlivekit import TranscriptionEngine, AudioProcessor, get_web_interfac
 
 from connection_manager import ConnectionManager
 from transcription_manager import TranscriptionManager
-from translation_worker import TranslationWorker
+from translation_worker import TranslationWorker, RoomManager
 
 # --- Argument Parsing ---
 parser = argparse.ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
@@ -29,9 +29,10 @@ args, unknown = parser.parse_known_args()
 # --- Logging ---
 logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
+global transcr_manager
 room_manager = None
-connection_manager = None
-transcription_manager = None
+conn_manager: ConnectionManager = None
+transcr_manager: TranscriptionManager = None
 # --- Has to stay ---
 transcription_engine = None
 server_ready = False
@@ -83,53 +84,58 @@ async def health():
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
 
-@app.websocket("/room/{room_id}")
-async def get_room(websocket: WebSocket, room_id: str):
-    global connection_manager
+
+@app.websocket("/room")
+async def get_room(websocket: WebSocket):
+    await websocket.accept()
+
+    try:
+        while True:
+                await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
+    except WebSocketDisconnect:
+        logging.info(f'Client x disconnected')
+
+
+@app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}/{password}")
+async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str, password: str):
+    global conn_manager
 
     await websocket.accept()
-    # role = websocket.headers.get('role')
-    role = 'host'
-    if not role:
+
+    role = 'client'
+    if not role or not (role == 'host' or role == 'client'):
         await websocket.close(code=1003, reason='No desired role found in headers')
     
     if role == 'host':
-        # password = websocket.headers.get('password')
-        password = 'password'
-        if not password: # TODO: check password
+        if not password or password != 'letmein': # TODO: check password
             await websocket.close(code=1003, reason='No desired role found in headers')
             return
         
-        # source_lang = websocket.query_params.get("source_lang")
         source_lang = 'de'
         if not source_lang:
-            await websocket.close(code=1003, reason='No desired role found in headers')
+            await websocket.close(code=1003, reason='No source lang found in headers')
         
-        transcription_manager = TranscriptionManager(args.source_lang)
+        transcr_manager = TranscriptionManager(args.source_lang)
 
         audio_processor = AudioProcessor(transcription_engine=transcription_engine)
         whisper_generator = await audio_processor.create_tasks()
 
-        connection_manager = ConnectionManager(transcription_manager, audio_processor, whisper_generator)
-        await connection_manager.listen_to_host(websocket)
-    return
-"""
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await connection_manager.connect(websocket)
+        conn_manager = ConnectionManager(transcr_manager, audio_processor, whisper_generator)
+        await conn_manager.listen_to_host(websocket)
+    else:   # role == 'client'
+        try:
+            await conn_manager.connect_client(websocket)
+        except Exception as e:
+            logging.warning(f'Client connection failed:\n{e}')
+            await websocket.close(code=1003, reason='No host connected')
 
-    try:
-        while True:
-            await asyncio.sleep(60)  # Just keep the connection alive
-    except WebSocketDisconnect:
-        connection_manager.remove_client(websocket)
-"""
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
-    global transcription_engine, transcription_manager
+    global conn_manager
     await websocket.accept()
 
-    transcription_manager = TranscriptionManager(args.source_lang)
+    transcr_manager = TranscriptionManager(args.source_lang)
+    room_manager = RoomManager([transcr_manager])
     translation_worker = TranslationWorker(
         room_manager, args.source_lang, [args.target_lang],    # TODO: implement multiple target langs
         lt_url=args.libretranslate_url, lt_port=args.libretranslate_port,
@@ -138,11 +144,11 @@ async def websocket_endpoint(websocket: WebSocket):
     translation_worker.start()
 
     # TODO: check websocket.headers.get or smth like that
-    audio_processor = AudioProcessor(transcription_engine=transcription_engine)
+    audio_processor = AudioProcessor(transcription_engine=transcription_engine) # TODO: move to init
     whisper_generator = await audio_processor.create_tasks()
 
-    connection_manager = ConnectionManager(transcription_manager, audio_processor, whisper_generator)
-    await connection_manager.listen_to_host(websocket)
+    conn_manager = ConnectionManager(transcr_manager, audio_processor, whisper_generator)
+    await conn_manager.listen_to_host(websocket)
 
 if __name__ == "__main__":
     import uvicorn
