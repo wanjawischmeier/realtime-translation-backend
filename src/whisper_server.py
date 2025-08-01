@@ -30,6 +30,10 @@ args, unknown = parser.parse_known_args()
 # --- Logging ---
 logging.getLogger("whisperlivekit.audio_processor").setLevel(logging.WARNING)
 logging.getLogger("faster_whisper").setLevel(logging.WARNING)
+
+global transcription_engine, transcription_manager, connection_manager
+room_manager = None
+connection_manager = None
 transcription_manager = None
 # --- Has to stay ---
 transcription_engine = None
@@ -125,7 +129,6 @@ async def websocket_endpoint(websocket: WebSocket):
 """
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
-    global transcription_engine, transcription_manager
     await websocket.accept()
 
     transcription_manager = TranscriptionManager(args.source_lang)
@@ -137,7 +140,7 @@ async def websocket_endpoint(websocket: WebSocket):
     translation_worker.start()
 
     # TODO: check websocket.headers.get or smth like that
-    audio_processor = AudioProcessor(transcription_engine=transcription_engine)
+    audio_processor = AudioProcessor(transcription_engine=transcription_engine) # TODO: move to livecycle start
     whisper_generator = await audio_processor.create_tasks()
 
     connection_manager = ConnectionManager(transcription_manager, audio_processor, whisper_generator)
