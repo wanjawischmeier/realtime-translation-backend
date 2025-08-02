@@ -63,6 +63,15 @@ async def health():
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
 
+@app.post("/auth")
+async def auth():
+    body = await request.json()
+    password = body.get("password")
+    if not password or password != HOST_PASSWORD:
+        return JSONResponse({"status": "fail"}, status_code=503)
+    else:
+        return JSONResponse({"status": "ok"}, status_code=200)
+
 
 @app.websocket("/room")
 async def get_room(websocket: WebSocket):
