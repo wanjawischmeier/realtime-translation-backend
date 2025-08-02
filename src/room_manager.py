@@ -60,7 +60,7 @@ class RoomManager:
             room = Room(event['code'], event['title'], event['track'], event['room'], event['url'], event['description'],
                 event['persons'][0]['name'], event['do_not_record'])
             self.current_rooms.append(room)
-
+        self.current_rooms.append(Room("dev_room_id", "dev_titel", "dev_track","dev_room", "dev_url","dev_des", "bob", False))
     async def activate_room(self, websocket: WebSocket, room_id:str, source_lang:str, transcription_engine):
         for room in self.current_rooms:
             if room_id != room.id:
