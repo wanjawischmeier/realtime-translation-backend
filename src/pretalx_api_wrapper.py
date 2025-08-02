@@ -28,21 +28,24 @@ class Conference:
 class PretalxAPI:
     def __init__(self):
         self.json_url = JSON_URL
-        self.cache_time = CACHE_TIME
+        self.cache_time: datetime = datetime.now()
         self.data: dict = {}
         self.update_data()
         self.conference: Conference = self.get_conference()
+        LOGGER.info(f"Conference Infos:\n {self.conference.__dict__}")
         self.ongoing_events = []
-        self.get_ongoing_events()
 
-    # TODO Call this function regularly to update data using CACHE_TIME
     def update_data(self):
         # Retrieves Data from Pretalx-Server (Should be called regularly)
-        LOGGER.info(f"Updating and caching data from {self.json_url}...")
+        if self.cache_time > datetime.now():
+            LOGGER.debug(f"Using cached pretalx data...")
+            return
+        LOGGER.info(f"Updating and caching data from pretalx @ {self.json_url}...")
         response = requests.get(self.json_url)
         if response.status_code != 200:
             raise APIError("Server returned HTTP status {code}".format(code=response.status_code))
         self.data = response.json()['schedule']
+        self.cache_time = datetime.now() + timedelta(minutes=CACHE_TIME)
 
     def get_conference(self) -> Conference:
         # Parses Data necessary to display the Conference in a nice way
@@ -54,7 +57,8 @@ class PretalxAPI:
 
     def get_ongoing_events(self, fake_now:str=None):
         # Returns a list of ongoing events in this conference sorted by time
-        LOGGER.info("Getting ongoing_events from cached data...")
+        self.update_data()
+        LOGGER.debug("Searching ongoing_events...")
         self.ongoing_events = []
         today = datetime.fromisoformat(fake_now).date() if fake_now is not None else date.today()
         for day in self.data['conference']['days']:
@@ -74,12 +78,15 @@ class PretalxAPI:
                     if now_start_delta.total_seconds() <= (720 * 60) and timedelta(minutes=-31) < now_start_delta < duration:
                          self.ongoing_events.append(event)
         self.ongoing_events.sort(key=lambda e: dateutil.parser.isoparse(e['date'])) # Sorts list by date
+        LOGGER.info(f"Ongoing Events:\n {[e for e in self.ongoing_events]}")
 
 class APIError(Exception):
     pass
 
+"""
 # Usage Example
 pretalx = PretalxAPI()
 print(pretalx.conference.__dict__)
 pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
 [print(e) for e in pretalx.ongoing_events]
+"""
