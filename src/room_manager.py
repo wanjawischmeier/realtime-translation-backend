@@ -1,5 +1,6 @@
 import logging
 from fastapi import WebSocket
+from starlette.websockets import WebSocketDisconnect
 from whisperlivekit import AudioProcessor
 
 from connection_manager import ConnectionManager
@@ -87,7 +88,8 @@ class RoomManager:
             try:
                 await room.connection_manager.connect_client(websocket)
                 room.translation_worker.target_langs.append(target_lang)
-            except Exception as e:  # TODO: cleaner errror handling
+                LOGGER.info(f"Added {target_lang} to {room_id}.")
+            except WebSocketDisconnect as e:
                 LOGGER.warning(f'Client connection failed:\n{e}')
                 await websocket.close(code=1003, reason='No host connected')
 

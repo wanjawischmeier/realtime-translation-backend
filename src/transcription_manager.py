@@ -77,10 +77,7 @@ class TranscriptionManager:
             if len(parts) == 3:
                 hours, minutes, seconds = parts
                 return hours * 3600 + minutes * 60 + seconds
-            else:
-                LOGGER.error(f"Unexpected time format: {time_str}")
-                return 0
-        except Exception as e:
+        except TypeError as e:
             LOGGER.error(f"Error parsing time string '{time_str}': {e}")
             return 0
         
@@ -455,11 +452,10 @@ class TranscriptionManager:
                 if self._buffer_transcription:
                     f.write(f"BUFFER: {self._buffer_transcription}\n")
             LOGGER.debug("Transcript updated and logged to file.")
-        except Exception as e:
+        except FileNotFoundError as e:
             LOGGER.error(f"Failed to write transcript to {self.log_path}: {e}")
     
     def _log_to_translate(self):
-        log_path = f'{self.log_directory}/to_translate_{self.room_id}.txt'
         try:
             # Prepare a JSON-serializable version
             serializable = []
@@ -471,5 +467,5 @@ class TranscriptionManager:
 
             with open(self.log_path, "w", encoding="utf-8") as f:
                 json.dump(serializable, f, ensure_ascii=False, indent=2)
-        except Exception as e:
+        except FileNotFoundError as e:
             LOGGER.error(f"Failed to write to logs/to_translate.txt: {e}")
