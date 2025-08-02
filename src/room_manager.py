@@ -43,10 +43,8 @@ class Room:
 class RoomManager:
     def __init__(self, pretalx:PretalxAPI):
         self.pretalx = pretalx
-        self.pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
         self.current_rooms: list[Room] = []
         self.update_rooms()
-        self.transcription_managers: list[TranscriptionManager] = []
 
         self.current_rooms.append(Room(
             'dev_room_id', 'Development Room', 'dev_track', 'dev_location',
@@ -70,7 +68,6 @@ class RoomManager:
             logging.info(f'Activating room: {room_id}')
             room.active = True
             room.transcription_manager = TranscriptionManager(source_lang, room_id=room_id)
-            self.transcription_managers.append(room.transcription_manager)
             
             room.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
             whisper_generator = await room.audio_processor.create_tasks()
@@ -101,9 +98,9 @@ class RoomManager:
                 continue
             
             # TODO: properly close room
+            room.transcription_manager = None
             room.connection_manager = None
             room.active = False
-            self.transcription_managers.remove(room.transcription_manager)
 
     def get_room_list(self):
         return [room.get_data() for room in self.current_rooms]
