@@ -53,7 +53,7 @@ app.add_middleware(
 )
 
 @app.get("/")
-async def get():
+async def get_dev_frontend():
     return HTMLResponse(get_web_interface_html())
 
 @app.get("/health")
@@ -72,6 +72,9 @@ async def auth():
     else:
         return JSONResponse({"status": "ok"}, status_code=200)
 
+@app.get("/room_list")
+async def get_room_list():
+    return JSONResponse(room_manager.get_room_list())
 
 @app.websocket("/room")
 async def get_room(websocket: WebSocket):
