@@ -56,7 +56,7 @@ class TranscriptionManager:
         self.room_id = room_id
         self.log_path = f'{log_directory}/to_translate_{self.room_id}.txt'
         self.compare_depth = compare_depth
-        self._source_lang = source_lang
+        self.source_lang = source_lang
         self._punkt_lang = punkt_language_map.get(source_lang)
         self._num_sentences_to_broadcast = num_sentences_to_broadcast
         self._queue = asyncio.Queue()
@@ -374,7 +374,7 @@ class TranscriptionManager:
                 speaker_label = f"{line['speaker']}: "
             
             # Assemble text sentences depending on lang
-            if lang == self._source_lang:
+            if lang == self.source_lang:
                 # Use original sentences unconditionally
                 text = " ".join(sentence['sentence'] for sentence in line.get('sentences', []))
             else:

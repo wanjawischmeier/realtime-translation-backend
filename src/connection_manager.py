@@ -57,7 +57,6 @@ class ConnectionManager:
     async def _handle_whisper_generator(self, whisper_generator):
         async for response in whisper_generator:
             self._transcription_manager.submit_chunk(response)
-            # await self._host.send_json(response) # TODO: remove if host is no longer dev frontend
             
         await self._host.send_json({"type": "ready_to_stop"})
         self._whisper_generator_handler_task.cancel() # TODO: check if this is necessary/working

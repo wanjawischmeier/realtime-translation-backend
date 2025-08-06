@@ -113,7 +113,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
             await websocket.close(code=1003, reason='No source lang found in url')
             return
         
-        await room_manager.activate_room(websocket, room_id, source_lang, transcription_engine)
+        await room_manager.activate_room_as_host(websocket, room_id, source_lang, target_lang, transcription_engine)
     else:   # role == 'client'
         await room_manager.join_room_as_client(websocket, room_id, target_lang)
 
@@ -124,7 +124,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     room_id = 'dev_room_id'
     source_lang = 'de'
-    await room_manager.activate_room(websocket, room_id, source_lang, transcription_engine)
+    await room_manager.activate_room_as_host(websocket, room_id, source_lang, transcription_engine)
 
 if __name__ == "__main__":
     import uvicorn
