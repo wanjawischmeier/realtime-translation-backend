@@ -47,12 +47,6 @@ class RoomManager:
         self.current_rooms: list[Room] = []
         self.update_rooms()
 
-        self.current_rooms.append(Room(
-            'dev_room_id', 'Development Room', 'dev_track', 'dev_location',
-            'dev_url', 'Room only to be used for development purposes', 'dev_organizer',
-            False
-        ))
-
     def update_rooms(self):
         self.pretalx.get_ongoing_events()
         self.current_rooms.clear()
@@ -61,6 +55,7 @@ class RoomManager:
                 event['persons'][0]['name'], event['do_not_record'])
             self.current_rooms.append(room)
         self.current_rooms.append(Room("dev_room_id", "dev_titel", "dev_track","dev_room", "dev_url","dev_des", "bob", False))
+    
     async def activate_room(self, websocket: WebSocket, room_id:str, source_lang:str, transcription_engine):
         for room in self.current_rooms:
             if room_id != room.id:
