@@ -1,28 +1,32 @@
 import logging
 from fastapi import WebSocket
-from starlette.websockets import WebSocketDisconnect
 from whisperlivekit import AudioProcessor
 
 from connection_manager import ConnectionManager
-from io_config.config import AVAILABLE_LANGS
 from pretalx_api_wrapper import PretalxAPI
 from transcription_manager import TranscriptionManager
-from io_config.logger import LOGGER
 from translation_worker import TranslationWorker
+from whisperlivekit import TranscriptionEngine
+from io_config.cli import MODEL, DIARIZATION
+from io_config.config import AVAILABLE_LANGS
+from io_config.logger import LOGGER
 
 
 class Room:
-    def __init__(self, room_id:str, title: str, track:str, location:str, url:str, description:str, presenter:str, do_not_record:bool,
-                 transcription_manager:TranscriptionManager=None, connection_manager:ConnectionManager=None, audio_processor:AudioProcessor=None, translation_worker:TranslationWorker=None):
+    def __init__(self, room_id:str, title: str, track:str, location:str, url:str, description:str, presenter:str, do_not_record:bool, active=False,
+                 transcription_engine: TranscriptionEngine = None, transcription_manager:TranscriptionManager=None,
+                 connection_manager:ConnectionManager=None, audio_processor:AudioProcessor=None, translation_worker:TranslationWorker=None):
+        
         self.id = room_id
         self.title = title
         self.track = track
         self.location = location
         self.pretalx_url = url
-        self.active = False
+        self.active = active
         self.do_not_record = do_not_record
         self.presenter = presenter
         self.description = description
+        self.transcription_engine: TranscriptionEngine = transcription_engine
         self.transcription_manager:TranscriptionManager = transcription_manager
         self.connection_manager:ConnectionManager = connection_manager
         self.audio_processor:AudioProcessor = audio_processor
@@ -69,7 +73,7 @@ class RoomManager:
             self.current_rooms.append(room)
         self.current_rooms.append(Room("dev_room_id", "dev_titel", "dev_track","dev_room", "dev_url","dev_des", "bob", False))
     
-    async def activate_room_as_host(self, websocket: WebSocket, room_id:str, source_lang:str, target_lang: str, transcription_engine):
+    async def activate_room_as_host(self, websocket: WebSocket, room_id:str, source_lang:str, target_lang: str):
         room = self.get_room(room_id)
         if not room:
             await websocket.close(code=1003, reason=f'Room "{room_id}" not found')
@@ -77,6 +81,8 @@ class RoomManager:
 
         logging.info(f'Activating room: {room_id}')
         room.active = True
+        LOGGER.info(f"Loading whisper model for {room_id}: {MODEL}, diarization={DIARIZATION}, language={source_lang}")
+        room.transcription_engine = transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=source_lang)
         room.transcription_manager = TranscriptionManager(source_lang, room_id=room_id)
             
         room.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
@@ -86,6 +92,8 @@ class RoomManager:
         room.translation_worker = TranslationWorker(room.transcription_manager)
         room.translation_worker.target_langs.append(target_lang)
         room.translation_worker.start()
+
+        # TODO: send "now listening" to frontend
         await room.connection_manager.listen_to_host(websocket)
 
         # Host disconnected
