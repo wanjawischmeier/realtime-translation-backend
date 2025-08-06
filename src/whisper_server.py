@@ -2,7 +2,7 @@ import asyncio
 import subprocess
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from whisperlivekit import TranscriptionEngine, get_web_interface_html
@@ -64,12 +64,14 @@ async def health():
         return JSONResponse({"status": "not ready"}, status_code=503)
 
 @app.post("/auth")
-async def auth():
+async def auth(request: Request):
     body = await request.json()
     password = body.get("password")
     if not password or password != HOST_PASSWORD:
+        LOGGER.info("Failed auth request")
         return JSONResponse({"status": "fail"}, status_code=503)
     else:
+        LOGGER.info("Succesful auth request")
         return JSONResponse({"status": "ok"}, status_code=200)
 
 @app.get("/room_list")
