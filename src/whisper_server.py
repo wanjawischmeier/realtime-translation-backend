@@ -89,22 +89,29 @@ async def get_room(websocket: WebSocket):
         LOGGER.info(f'Client x disconnected')
 
 
-@app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}/{password}")
-async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str, password: str):
+@app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}")
+async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str):
     global transcription_engine
 
     await websocket.accept()
 
     if not role or not (role == 'host' or role == 'client'):
-        await websocket.close(code=1003, reason='No desired role found in headers')
+        await websocket.close(code=1003, reason='No desired role found in url')
+        return
     
+    if not target_lang:
+        await websocket.close(code=1003, reason='No target lang found in url')
+        return
+
     if role == 'host':
+        password = websocket.cookies.get('authenticated')
         if not password or password != HOST_PASSWORD:
-            await websocket.close(code=1003, reason='No desired role found in headers')
+            await websocket.close(code=1003, reason='Authentification failed: no valid password in session cookie')
             return
         
         if not source_lang:
-            await websocket.close(code=1003, reason='No source lang found in headers')
+            await websocket.close(code=1003, reason='No source lang found in url')
+            return
         
         await room_manager.activate_room(websocket, room_id, source_lang, transcription_engine)
     else:   # role == 'client'
