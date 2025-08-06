@@ -73,20 +73,29 @@ class RoomManager:
             await room.connection_manager.listen_to_host(websocket)
 
             self.deactivate_room(room_id)
+            break
 
     async def join_room_as_client(self, websocket: WebSocket, room_id:str, target_lang:str):
         for room in self.current_rooms:
             if room_id != room.id:
                 continue
 
+            if not room.active:
+                LOGGER.warning(f'Client connection failed: Room not active')
+                await websocket.close(code=1003, reason='Room not active')
+                return
+
+
             logging.info(f'Client joining room: {room_id}')
             try:
                 await room.connection_manager.connect_client(websocket)
                 room.translation_worker.target_langs.append(target_lang)
                 LOGGER.info(f"Added {target_lang} to {room_id}.")
-            except WebSocketDisconnect as e:
+            except Exception as e:
                 LOGGER.warning(f'Client connection failed:\n{e}')
-                await websocket.close(code=1003, reason='No host connected')
+                await websocket.close(code=1003, reason="Internal server error")
+            
+            break
 
 
     def deactivate_room(self, room_id:str):
@@ -98,6 +107,8 @@ class RoomManager:
             room.transcription_manager = None
             room.connection_manager = None
             room.active = False
+
+            break
 
     def get_room_list(self):
         return [room.get_data() for room in self.current_rooms]
