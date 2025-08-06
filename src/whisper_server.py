@@ -5,23 +5,20 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from whisperlivekit import TranscriptionEngine, get_web_interface_html
+from whisperlivekit import get_web_interface_html
 
-from io_config.cli import MODEL, DIARIZATION, SOURCE_LANG
 from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
 from io_config.logger import LOGGER
 from room_manager import room_manager
 
-# --- Has to stay ---
-transcription_engine = None
 server_ready = False
 
 # --- FastAPI App and Lifespan ---
 @asynccontextmanager
 async def lifespan(app:FastAPI):
-    global transcription_engine, server_ready
-    LOGGER.info(f"Loading Whisper model: {MODEL}, diarization={DIARIZATION}, language={SOURCE_LANG}")
-    transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=SOURCE_LANG) # buffer_trimming="sentence"
+    global server_ready
+    # LOGGER.info(f"Loading Whisper model: {MODEL}, diarization={DIARIZATION}, language={SOURCE_LANG}")
+    # transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=SOURCE_LANG) # buffer_trimming="sentence"
 
     LOGGER.info(f"Starting LibreTranslate server: {LT_HOST}:{LT_PORT}")
     # Start LibreTranslate as a subprocess
@@ -52,7 +49,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/") # TODO: remove dev frontend in production
 async def get_dev_frontend():
     return HTMLResponse(get_web_interface_html())
 
@@ -91,7 +88,7 @@ async def get_room(websocket: WebSocket):
 
 @app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}")
 async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str):
-    global transcription_engine
+    # global transcription_engine
 
     await websocket.accept()
 
@@ -113,18 +110,17 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
             await websocket.close(code=1003, reason='No source lang found in url')
             return
         
-        await room_manager.activate_room_as_host(websocket, room_id, source_lang, target_lang, transcription_engine)
+        await room_manager.activate_room_as_host(websocket, room_id, source_lang, target_lang)
     else:   # role == 'client'
         await room_manager.join_room_as_client(websocket, room_id, target_lang)
 
 @app.websocket("/asr")
 async def websocket_endpoint(websocket: WebSocket):
-    global transcription_engine
     await websocket.accept()
 
     room_id = 'dev_room_id'
     source_lang = 'de'
-    await room_manager.activate_room_as_host(websocket, room_id, source_lang, transcription_engine)
+    await room_manager.activate_room_as_host(websocket, room_id, source_lang)
 
 if __name__ == "__main__":
     import uvicorn
