@@ -52,13 +52,10 @@ class TranslationWorker(threading.Thread):
                         translation_time = time.time() - cycle_start
                         self.transcription_manager.submit_translation(translation_results, translation_time)
                         LOGGER.info(f"Submitted {len(translation_results)} translations to '{target_lang}' in {translation_time:.2f}s.")
-            except TranslationError as e: # TODO: Remove this try/catch? I feel like its not necessary, cause the only possible error is already caught in RequestException
+            except Exception as e: # TODO: Remove this try/catch? I feel like its not necessary, cause the only possible error is already caught in RequestException
                 LOGGER.error(f"Error in translation cycle: {e}")
 
             elapsed = time.time() - cycle_start
             sleep_time = self.poll_interval - elapsed
             if sleep_time > 0:
                 time.sleep(sleep_time)
-
-class TranslationError(Exception): # TODO: Check if necessary
-    pass
