@@ -4,11 +4,11 @@ version = "0.1.0"
 description = ""
 authors = ["substrato <movementwiki@systemli.org>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "3.9.23"
 onnxruntime = "<=1.19.2"
-whisperlivekit = {extras = ["simulstreaming"], version = "^0.2.2"}
 setuptools = "~69.1"
 diart = "^0.9.2"
 huggingface-hub = "^0.33.2"
@@ -27,6 +27,7 @@ aiohttp-cors = "^0.8.1"
 tiktoken = "^0.9.0"
 mosestokenizer = "^1.2.1"
 nltk = "^3.9.1"
+whisperlivekit = {path = "/home/substrato/Dokumente/aktivistek/scc-translation/WhisperLiveKit", develop = true}
 
 
 

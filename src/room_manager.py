@@ -8,7 +8,7 @@ from pretalx_api_wrapper import PretalxAPI
 from transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
 from whisperlivekit import TranscriptionEngine
-from io_config.cli import MODEL, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
+from io_config.cli import MODEL, DEVICE, COMPUTE_TYPE, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
 from io_config.config import AVAILABLE_WHISPER_LANGS, MAX_WHISPER_INSTANCES, AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
 
@@ -97,11 +97,15 @@ class RoomManager:
                 if not target_lang in room.translation_worker.target_langs:
                     room.translation_worker.target_langs.append(target_lang)
                 
+                task = self._deactivation_tasks.get(room.id, None)
+                if task:
+                    task.cancel() # Cancel room deactivation
+                
                 LOGGER.info(f'Host joined already active room <{room_id}> with matching configuration')
             else:
                 # Configuration mismatch, restart room
                 LOGGER.info(f'Host joined already active room <{room_id}> with mismatching configuration, restarting room...')
-                self._deactivate_room(room)
+                await self._deactivate_room(room)
                 await self._activate_room(room, source_lang, target_lang)
         else:
             # Initial room activation
@@ -115,7 +119,8 @@ class RoomManager:
         await room.connection_manager.listen_to_host(websocket)
 
         # Host disconnected
-        await self.defer_room_deactivation(room_id)
+        LOGGER.info('Host disconnected, waiting a bit before closing room')
+        await self._defer_room_deactivation(room, 10) # TODO: revert to 300s (5m) for production
 
     async def join_room_as_client(self, websocket: WebSocket, room_id:str, target_lang:str):
         room = self.get_room(room_id)
@@ -147,44 +152,47 @@ class RoomManager:
         room.transcription_engine = transcription_engine = TranscriptionEngine(
             model=MODEL, diarization=DIARIZATION, lan=source_lang,
             vac=VAC, buffer_trimming=BUFFER_TRIMMING,
-            min_chunk_size=MIN_CHUNK_SIZE, vac_chunk_size=VAC_CHUNK_SIZE
+            min_chunk_size=MIN_CHUNK_SIZE, vac_chunk_size=VAC_CHUNK_SIZE,
+            device=DEVICE, compute_type=COMPUTE_TYPE
         )
         room.transcription_manager = TranscriptionManager(source_lang, room_id=room.id)
             
         room.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
         whisper_generator = await room.audio_processor.create_tasks()
-
+        
         room.connection_manager = ConnectionManager(room.transcription_manager, room.audio_processor, whisper_generator)
         room.translation_worker = TranslationWorker(room.transcription_manager)
         if not target_lang in room.translation_worker.target_langs:
             room.translation_worker.target_langs.append(target_lang)
         room.translation_worker.start()
 
-    def _deactivate_room(self, room: Room) -> bool:
+    async def _deactivate_room(self, room: Room) -> bool:
         if not room.active:
             LOGGER.warning(f'Tried to deactivate inactive room <{room.id}>')
             return False
             
         # TODO: properly close room
+        room.transcription_engine.free()
+        # await room.audio_processor.cleanup() # 'NoneType' object has no attribute 'sep' in audio_processor.watchdog
         room.connection_manager.cancel()
         room.translation_worker.stop()
         room.active = False
         return True
 
-    async def defer_room_deactivation(self, room_id: str, deactivation_delay: float=300):
+    async def _defer_room_deactivation(self, room: Room, deactivation_delay: float=300):
         # Cancel any existing deactivation task
-        task = self._deactivation_tasks.pop(room_id, None)
+        task = self._deactivation_tasks.pop(room.id, None)
         if task:
             task.cancel()
         
         # Start new delayed deactivation
         async def deactivate_after_delay():
             await asyncio.sleep(deactivation_delay)
-            self._deactivation_tasks.pop(room_id, None)
+            self._deactivation_tasks.pop(room.id, None)
             self._active_room_count = max(0, self._active_room_count - 1)
-            LOGGER.info(f'Deactivating room <{room_id}> after {deactivation_delay}s without host')
-            self._deactivate_room(room_id)
-        self._deactivation_tasks[room_id] = asyncio.create_task(
+            LOGGER.info(f'Deactivating room <{room.id}> after {deactivation_delay}s without host')
+            await self._deactivate_room(room)
+        self._deactivation_tasks[room.id] = asyncio.create_task(
             deactivate_after_delay()
         )
 

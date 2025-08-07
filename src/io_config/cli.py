@@ -3,13 +3,13 @@ import sys
 from argparse import ArgumentParser, Namespace
 from typing import Final
 
-from whisperlivekit import TranscriptionEngine
-
 def get_args() -> Namespace:
     cli = ArgumentParser(description="WhisperLiveKit + LibreTranslate FastAPI server")
     cli.add_argument("-c", "--config", default='config.yml', dest='config_file', type=str,
                      help='specify path to config file, defaults to config.yml', action='store', nargs='?')
     cli.add_argument("-m", "--model", default="medium", dest='model', help="Whisper model (tiny, small, medium, large, etc.)")
+    cli.add_argument("--device", default="auto", dest='device', help="Compute device for whisper (e.g. cuda)")
+    cli.add_argument("--compute-type", default="auto", dest='compute_type', help="Compute type for whisper (e.g. float32)")
     cli.add_argument("-d", "--diarization", dest='diarization', action="store_true", help="Enable speaker diarization")
     cli.add_argument("-vac", "--voice-activity-controller", dest='vac', action="store_true", help="Enable voice activity controller")
     cli.add_argument("-b", "--buffer-trimming", default='sentence', dest="buffer_trimming", help="Buffer trimming algorithm")
@@ -28,6 +28,8 @@ def get_args() -> Namespace:
 ARGS: Final[Namespace] = get_args()
 CONFIG_FILE: Final[str] = ARGS.config_file
 MODEL: Final[str] = ARGS.model
+DEVICE: Final[str] = ARGS.device
+COMPUTE_TYPE: Final[str] = ARGS.compute_type
 DIARIZATION: Final[bool] = ARGS.diarization
 VAC: Final[bool] = ARGS.vac
 BUFFER_TRIMMING: Final[str] = ARGS.buffer_trimming
@@ -38,4 +40,5 @@ LOGLEVEL: Final[str] = ARGS.loglevel
 LOG_TRANSCRIPTS: Final[bool] = ARGS.log_transcripts
 
 # Lightweight dev args: --model tiny
-# Production args: --model medium --vac --buffer_trimming sentence --min-chunk-size 1 --vac-chunk-size 1
+# Production args: --model medium --vac --buffer_trimming sentence --min-chunk-size 1 --vac-chunk-size 1 --device cuda --compute-type float32
+# To download a model: poetry run whisperlivekit-server --model <model>
