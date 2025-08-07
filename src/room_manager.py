@@ -41,9 +41,7 @@ class Room:
             'track': self.track,
             'location': self.location,
             'presenter': self.presenter,
-            'active': self.active,
-            'available_source_langs': AVAILABLE_WHISPER_LANGS, # TODO: put in a more reasonable data structure
-            'available_target_langs': AVAILABLE_LT_LANGS
+            'active': self.active
         }
 
         if self.active:
@@ -110,14 +108,14 @@ class RoomManager:
             if self._active_room_count >= MAX_WHISPER_INSTANCES:
                 await websocket.close(code=1003, reason=f'Unable to activate room <{room_id}>: Maximum capacity of {MAX_WHISPER_INSTANCES} instances reached')
                 return
-            
+
             await self._activate_room(room, source_lang, target_lang)
 
         # TODO: send 'now listening' to frontend
         await room.connection_manager.listen_to_host(websocket)
 
         # Host disconnected
-        self.defer_room_deactivation(room_id)
+        await self.defer_room_deactivation(room_id)
 
     async def join_room_as_client(self, websocket: WebSocket, room_id:str, target_lang:str):
         room = self.get_room(room_id)
@@ -191,6 +189,16 @@ class RoomManager:
         )
 
     def get_room_list(self):
-        return [room.get_data() for room in self.current_rooms]
+        rooms = []
+        for room in self.current_rooms:
+            rooms.append(room.get_data())
+        
+        return {
+            'available_source_langs': AVAILABLE_WHISPER_LANGS,
+            'available_target_langs': AVAILABLE_LT_LANGS,
+            'max_active_rooms': MAX_WHISPER_INSTANCES,
+            'rooms': rooms
+        }
+
 
 room_manager = RoomManager(pretalx=PretalxAPI())
