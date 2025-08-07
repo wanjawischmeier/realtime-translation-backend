@@ -24,6 +24,9 @@ CACHE_TIME: Final[int] = CONFIG['pretalx']['cache_time']
 API_HOST: Final[str] = CONFIG['fastapi']['host']
 API_PORT: Final[int] = CONFIG['fastapi']['port']
 
+# Whisper-Section
+AVAILABLE_WHISPER_LANGS: Final[str] = CONFIG['whisper']['langs']
+
 # LibreTranslate-Section
 LT_HOST: Final[str] = CONFIG['libretranslate']['host']
 LT_PORT: Final[int] = CONFIG['libretranslate']['port']
@@ -35,4 +38,4 @@ def get_available_languages():
     if response.status_code != 200:
         LOGGER.error("Server returned HTTP status {code}".format(code=response.status_code))
     return response.json()[0]['targets']
-AVAILABLE_LANGS: Final[list[str]] = get_available_languages()
+AVAILABLE_LT_LANGS: Final[list[str]] = get_available_languages()

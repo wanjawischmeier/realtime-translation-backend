@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from fastapi import WebSocket
 from whisperlivekit import AudioProcessor
@@ -8,7 +9,7 @@ from transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
 from whisperlivekit import TranscriptionEngine
 from io_config.cli import MODEL, DIARIZATION
-from io_config.config import AVAILABLE_LANGS
+from io_config.config import AVAILABLE_WHISPER_LANGS, AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
 
 
@@ -41,7 +42,8 @@ class Room:
             'location': self.location,
             'presenter': self.presenter,
             'active': self.active,
-            'available_langs': AVAILABLE_LANGS
+            'available_source_langs': AVAILABLE_WHISPER_LANGS, # TODO: put in a more reasonable data structure
+            'available_target_langs': AVAILABLE_LT_LANGS
         }
 
         if self.active:
@@ -53,6 +55,7 @@ class RoomManager:
     def __init__(self, pretalx:PretalxAPI):
         self.pretalx = pretalx
         self.current_rooms: list[Room] = []
+        self._deactivation_tasks: dict[str, asyncio.Task] = {}
         self.update_rooms()
 
     def get_room(self, room_id: str) -> Room:
@@ -78,26 +81,39 @@ class RoomManager:
         if not room:
             await websocket.close(code=1003, reason=f'Room "{room_id}" not found')
             return
-
-        logging.info(f'Activating room: {room_id}')
-        room.active = True
-        LOGGER.info(f"Loading whisper model for {room_id}: {MODEL}, diarization={DIARIZATION}, language={source_lang}")
-        room.transcription_engine = transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=source_lang)
-        room.transcription_manager = TranscriptionManager(source_lang, room_id=room_id)
-            
-        room.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
-        whisper_generator = await room.audio_processor.create_tasks()
-
-        room.connection_manager = ConnectionManager(room.transcription_manager, room.audio_processor, whisper_generator)
-        room.translation_worker = TranslationWorker(room.transcription_manager)
-        room.translation_worker.target_langs.append(target_lang)
-        room.translation_worker.start()
+        
+        if room.do_not_record:
+            await websocket.close(code=1003, reason=f'Audio recording not allowed in room "{room_id}"')
+            return
+        
+        if not source_lang in AVAILABLE_WHISPER_LANGS:
+            await websocket.close(code=1003, reason=f'Source language {source_lang} not supported by transcription engine')
+            return
+        
+        if not target_lang in AVAILABLE_LT_LANGS:
+            await websocket.close(code=1003, reason=f'Target language {target_lang} not supported by translation service')
+            return
+        
+        if room.active:
+            if source_lang == room.transcription_manager.source_lang:
+                # Matching configuration
+                if not target_lang in room.translation_worker.target_langs:
+                    room.translation_worker.target_langs.append(target_lang)
+                
+                LOGGER.info('Host joined already active room with matching configuration')
+            else:
+                # Configuration mismatch, restart room
+                self._deactivate_room(room)
+                await self._activate_room(room, source_lang, target_lang)
+        else:
+            # Initial room activation
+            await self._activate_room(room, source_lang, target_lang)
 
         # TODO: send "now listening" to frontend
         await room.connection_manager.listen_to_host(websocket)
 
         # Host disconnected
-        self.deactivate_room(room_id)
+        self.defer_room_deactivation(room_id)
 
     async def join_room_as_client(self, websocket: WebSocket, room_id:str, target_lang:str):
         room = self.get_room(room_id)
@@ -119,20 +135,51 @@ class RoomManager:
             LOGGER.warning(f'Client connection failed:\n{e}')
             await websocket.close(code=1003, reason="Internal server error")
 
-    def deactivate_room(self, room_id:str) -> bool:
-        room = self.get_room(room_id)
-        if not room:
-            LOGGER.warning("Tried to deactivate unknown room id")
-            return False
-        
+    async def _activate_room(self, room: Room, source_lang:str, target_lang: str):
+        logging.info(f'Activating room: {room.id}')
+        room.active = True
+        task = self._deactivation_tasks.get(room.id, None)
+        if task:
+            task.cancel() # Cancel room deactivation
+        LOGGER.info(f"Loading whisper model for {room.id}: {MODEL}, diarization={DIARIZATION}, language={source_lang}")
+        room.transcription_engine = transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=source_lang)
+        room.transcription_manager = TranscriptionManager(source_lang, room_id=room.id)
+            
+        room.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
+        whisper_generator = await room.audio_processor.create_tasks()
+
+        room.connection_manager = ConnectionManager(room.transcription_manager, room.audio_processor, whisper_generator)
+        room.translation_worker = TranslationWorker(room.transcription_manager)
+        if not target_lang in room.translation_worker.target_langs:
+            room.translation_worker.target_langs.append(target_lang)
+        room.translation_worker.start()
+
+    def _deactivate_room(self, room: Room) -> bool:
         if not room.active:
             LOGGER.warning("Tried to deactivate inactive room")
             return False
             
         # TODO: properly close room
+        room.connection_manager.cancel()
         room.translation_worker.stop()
         room.active = False
         return True
+
+    async def defer_room_deactivation(self, room_id: str, deactivation_delay: float=300):
+        # Cancel any existing deactivation task
+        task = self._deactivation_tasks.pop(room_id, None)
+        if task:
+            task.cancel()
+        
+        # Start new delayed deactivation
+        async def deactivate_after_delay():
+            await asyncio.sleep(deactivation_delay)
+            self._deactivation_tasks.pop(room_id, None)
+            LOGGER.info(f'Deactivating room {room_id} after {deactivation_delay}s without host')
+            self._deactivate_room(room_id)
+        self._deactivation_tasks[room_id] = asyncio.create_task(
+            deactivate_after_delay()
+        )
 
     def get_room_list(self):
         return [room.get_data() for room in self.current_rooms]
