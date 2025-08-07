@@ -29,7 +29,6 @@ class ConnectionManager:
             return
         
         self._host = websocket
-        self._clients.append(self._host)   # Host also wants to recieve transcript
         LOGGER.info('Host connected')
 
         try:
@@ -38,8 +37,6 @@ class ConnectionManager:
                 await self._audio_processor.process_audio(message)
         except WebSocketDisconnect:
             self.cancel()
-            if self._host in self._clients:
-                self._clients.remove(self._host)
             self._host = None
             LOGGER.info('Host disconnected')
 
@@ -58,7 +55,7 @@ class ConnectionManager:
         async for response in whisper_generator:
             self._transcription_manager.submit_chunk(response)
             
-        await self._host.send_json({"type": "ready_to_stop"})
+        await self._host.send_json({"type": "ready_to_stop"}) # TODO: remove this if dev frontend no longer needed
         self._whisper_generator_handler_task.cancel() # TODO: check if this is necessary/working
 
     async def _handle_transcript_generator(self, transcript_generator):
@@ -66,6 +63,7 @@ class ConnectionManager:
             print('Result:')
             print(transcript)
             
+            await self._host.send_json(transcript) # Host also wants to recieve transcript
             for client in self._clients:
                 try:
                     await client.send_json(transcript)
