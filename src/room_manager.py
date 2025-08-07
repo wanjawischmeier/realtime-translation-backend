@@ -9,7 +9,7 @@ from transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
 from whisperlivekit import TranscriptionEngine
 from io_config.cli import MODEL, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
-from io_config.config import AVAILABLE_WHISPER_LANGS, AVAILABLE_LT_LANGS
+from io_config.config import AVAILABLE_WHISPER_LANGS, MAX_WHISPER_INSTANCES, AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
 
 
@@ -55,6 +55,7 @@ class RoomManager:
     def __init__(self, pretalx:PretalxAPI):
         self.pretalx = pretalx
         self.current_rooms: list[Room] = []
+        self._active_room_count = 0
         self._deactivation_tasks: dict[str, asyncio.Task] = {}
         self.update_rooms()
 
@@ -106,6 +107,10 @@ class RoomManager:
                 await self._activate_room(room, source_lang, target_lang)
         else:
             # Initial room activation
+            if self._active_room_count >= MAX_WHISPER_INSTANCES:
+                await websocket.close(code=1003, reason=f'Unable to activate room <{room_id}>: Maximum capacity of {MAX_WHISPER_INSTANCES} instances reached')
+                return
+            
             await self._activate_room(room, source_lang, target_lang)
 
         # TODO: send 'now listening' to frontend
@@ -178,6 +183,7 @@ class RoomManager:
         async def deactivate_after_delay():
             await asyncio.sleep(deactivation_delay)
             self._deactivation_tasks.pop(room_id, None)
+            self._active_room_count = max(0, self._active_room_count - 1)
             LOGGER.info(f'Deactivating room <{room_id}> after {deactivation_delay}s without host')
             self._deactivate_room(room_id)
         self._deactivation_tasks[room_id] = asyncio.create_task(
