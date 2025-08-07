@@ -17,9 +17,6 @@ server_ready = False
 @asynccontextmanager
 async def lifespan(app:FastAPI):
     global server_ready
-    # LOGGER.info(f"Loading Whisper model: {MODEL}, diarization={DIARIZATION}, language={SOURCE_LANG}")
-    # transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=SOURCE_LANG) # buffer_trimming="sentence"
-
     LOGGER.info(f"Starting LibreTranslate server: {LT_HOST}:{LT_PORT}")
     # Start LibreTranslate as a subprocess
     libretranslate_proc = subprocess.Popen(

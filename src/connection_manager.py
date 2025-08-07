@@ -37,7 +37,7 @@ class ConnectionManager:
                 message = await websocket.receive_bytes()
                 await self._audio_processor.process_audio(message)
         except WebSocketDisconnect:
-            self._cancel_existing_tasks()
+            self.cancel()
             if self._host in self._clients:
                 self._clients.remove(self._host)
             self._host = None
@@ -67,14 +67,18 @@ class ConnectionManager:
             print(transcript)
             
             for client in self._clients:
-                await client.send_json(transcript)
+                try:
+                    await client.send_json(transcript)
+                except WebSocketDisconnect:
+                    LOGGER.info(f'Removing dead client {len(self._clients)}')
+                    self._clients.remove(client)
         
         for client in self._clients: # TODO: implement this in the frontend?
             await client.send_json({'type': 'ready_to_stop'})
         LOGGER.info('Results generator closed')
         self._transcript_generator_handler_task.cancel() # TODO: check if this is necessary/working
 
-    def _cancel_existing_tasks(self):
+    def cancel(self):
         if self._whisper_generator_handler_task:
             self._whisper_generator_handler_task.cancel()
         if self._transcript_generator_handler_task:

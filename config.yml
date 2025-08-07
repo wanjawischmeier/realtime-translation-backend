@@ -10,6 +10,12 @@ fastapi:
   host: 127.0.0.1 #Host to bind FastAPI server
   port: 8000 # Port to bind FastAPI server
 
+# Whisper-Section
+whisper:
+  langs:
+    - de
+    - en
+
 # LibreTranslate-Section
 libretranslate:
   host: 127.0.0.1 # Host to bind LibreTranslate server
