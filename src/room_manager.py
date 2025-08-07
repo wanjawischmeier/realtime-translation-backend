@@ -8,7 +8,7 @@ from pretalx_api_wrapper import PretalxAPI
 from transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
 from whisperlivekit import TranscriptionEngine
-from io_config.cli import MODEL, DIARIZATION
+from io_config.cli import MODEL, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
 from io_config.config import AVAILABLE_WHISPER_LANGS, AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
 
@@ -58,7 +58,7 @@ class RoomManager:
         self._deactivation_tasks: dict[str, asyncio.Task] = {}
         self.update_rooms()
 
-    def get_room(self, room_id: str) -> Room | None:
+    def get_room(self, room_id: str) -> Room:
         for room in self.current_rooms:
             if room_id != room.id:
                 continue
@@ -141,7 +141,11 @@ class RoomManager:
         if task:
             task.cancel() # Cancel room deactivation
         LOGGER.info(f'Loading whisper model for {room.id}: {MODEL}, diarization={DIARIZATION}, language={source_lang}')
-        room.transcription_engine = transcription_engine = TranscriptionEngine(model=MODEL, diarization=DIARIZATION, lan=source_lang)
+        room.transcription_engine = transcription_engine = TranscriptionEngine(
+            model=MODEL, diarization=DIARIZATION, lan=source_lang,
+            vac=VAC, buffer_trimming=BUFFER_TRIMMING,
+            min_chunk_size=MIN_CHUNK_SIZE, vac_chunk_size=VAC_CHUNK_SIZE
+        )
         room.transcription_manager = TranscriptionManager(source_lang, room_id=room.id)
             
         room.audio_processor = AudioProcessor(transcription_engine=transcription_engine)

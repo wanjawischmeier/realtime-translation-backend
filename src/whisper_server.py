@@ -40,7 +40,7 @@ async def lifespan(app:FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, restrict this!
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -85,8 +85,6 @@ async def get_room(websocket: WebSocket):
 
 @app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}")
 async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str):
-    # global transcription_engine
-
     await websocket.accept()
 
     if not role or not (role == 'host' or role == 'client'):
