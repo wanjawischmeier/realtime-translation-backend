@@ -8,6 +8,7 @@ from datetime import datetime
 # Initialize tokenizer
 import nltk
 
+from io_config.cli import LOG_TRANSCRIPTS
 from io_config.logger import LOGGER
 from rolling_average import RollingAverage
 
@@ -257,11 +258,13 @@ class TranscriptionManager:
             })
 
         # logging for debugging
-        self._log_transcript_to_file()
-        self._log_to_translate()
-        transcript = self.get_human_readable_transcript("en")
-        with open(f'{self.log_directory}/human_transcript.txt', 'w') as f:
-            f.write(transcript)
+        if LOG_TRANSCRIPTS:
+            self._log_transcript_to_file()
+            self._log_to_translate()
+
+            transcript = self.get_human_readable_transcript("en")
+            with open(f'{self.log_directory}/human_transcript.txt', 'w') as f:
+                f.write(transcript)
 
         # write changes to disk
         with open(self._transcript_db_path, 'wb') as pkl_file:

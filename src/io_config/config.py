@@ -26,6 +26,7 @@ API_PORT: Final[int] = CONFIG['fastapi']['port']
 
 # Whisper-Section
 AVAILABLE_WHISPER_LANGS: Final[str] = CONFIG['whisper']['langs']
+MAX_WHISPER_INSTANCES: Final[int] = CONFIG['whisper']['max_instances']
 
 # LibreTranslate-Section
 LT_HOST: Final[str] = CONFIG['libretranslate']['host']

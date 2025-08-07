@@ -15,6 +15,7 @@ whisper:
   langs:
     - de
     - en
+  max_instances: 2
 
 # LibreTranslate-Section
 libretranslate:
