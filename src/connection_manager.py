@@ -1,6 +1,5 @@
 import asyncio
-import logging
-
+from typing import Any, Awaitable, Callable
 from fastapi import WebSocket, WebSocketDisconnect
 from whisperlivekit import AudioProcessor
 
@@ -9,9 +8,13 @@ from transcription_manager import TranscriptionManager
 
 
 class ConnectionManager:
-    def __init__(self, transcription_manager:TranscriptionManager, audio_processor: AudioProcessor, whisper_generator):
+    def __init__(self, transcription_manager:TranscriptionManager, audio_processor: AudioProcessor, whisper_generator,
+                 audio_chunk_recieved: Callable[[Any], Awaitable[None]], transcript_chunk_recieved: Callable[[dict], None], restart_request_recieved: Callable[[None], Awaitable[None]]):
         self._transcription_manager = transcription_manager
         self._audio_processor = audio_processor
+        self._audio_chunk_recieved = audio_chunk_recieved
+        self._transcript_chunk_recieved = transcript_chunk_recieved
+        self._restart_request_recieved = restart_request_recieved
         self._host: WebSocket = None
         self._clients: list[WebSocket] = []
         
@@ -34,7 +37,28 @@ class ConnectionManager:
         try:
             while True:
                 message = await websocket.receive_bytes()
-                await self._audio_processor.process_audio(message)
+                await self._audio_processor.process_audio(message) # TODO: switch over to callback
+                # await self._audio_chunk_recieved(message)
+                
+                # TODO: test new listener
+                """
+                message = await websocket.receive()
+                if "bytes" in message and message["bytes"] is not None:
+                    await self._audio_processor.process_audio(message["bytes"]) # TODO: switch over to callback
+                    # await self._audio_chunk_recieved(message["bytes"])
+                elif "text" in message and message["text"] is not None:
+                    request = message["text"]
+                    func = {
+                        "restart_room": self._restart_request_recieved
+                    }.get(request)
+
+                    if func:
+                        func()
+                    else:
+                        LOGGER.warning(f'Recieved unknown request: {request}')
+                else:
+                    LOGGER.warning(f'Recieved unknown data format: {message}')
+                """
         except WebSocketDisconnect:
             self.cancel()
             self._host = None
@@ -53,7 +77,8 @@ class ConnectionManager:
     
     async def _handle_whisper_generator(self, whisper_generator):
         async for response in whisper_generator:
-            self._transcription_manager.submit_chunk(response)
+            self._transcription_manager.submit_chunk(response) # TODO: switch over to callback
+            # self._transcript_chunk_recieved(response)
             
         await self._host.send_json({"type": "ready_to_stop"}) # TODO: remove this if dev frontend no longer needed
         self._whisper_generator_handler_task.cancel() # TODO: check if this is necessary/working

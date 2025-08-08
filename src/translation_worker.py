@@ -10,9 +10,9 @@ from transcription_manager import TranscriptionManager
 
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0,):
+    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0, target_langs: list[str]=[]):
         super().__init__()
-        self.target_langs = []
+        self.target_langs = target_langs
         self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
         self.poll_interval = poll_interval
         self.daemon = True
