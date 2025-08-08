@@ -254,7 +254,9 @@ class TranscriptionManager:
             # Put the new result in the async queue
             self._queue.put_nowait({
                 'last_n_sents': last_n_sents,
-                'incomplete_sentence': self._incomplete_sentence
+                'incomplete_sentence': self._incomplete_sentence,
+                'transcription_delay': self.rolling_transcription_delay.get_average(),
+                'translation_delay': self.rolling_translation_delay.get_average()
             })
 
         # logging for debugging
