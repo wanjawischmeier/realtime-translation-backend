@@ -60,7 +60,7 @@ class Room:
             min_chunk_size=MIN_CHUNK_SIZE, vac_chunk_size=VAC_CHUNK_SIZE,
             device=DEVICE, compute_type=COMPUTE_TYPE
         )
-        self.transcription_manager = TranscriptionManager(source_lang, self_id=self.id)
+        self.transcription_manager = TranscriptionManager(source_lang, room_id=self.id)
             
         self.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
         whisper_generator = await self.audio_processor.create_tasks()
@@ -68,7 +68,7 @@ class Room:
         if connection_manager:
             self.connection_manager = connection_manager
         else:
-            self.connection_manager = ConnectionManager(self.transcription_manager, self.audio_processor, whisper_generator,
+            self.connection_manager = ConnectionManager(self.id, self.transcription_manager, self.audio_processor, whisper_generator,
                                                         self.audio_processor.process_audio, self.transcription_manager.submit_chunk,
                                                         self.restart_engine)
         self.translation_worker = TranslationWorker(self.transcription_manager, target_langs=target_langs)
@@ -100,7 +100,7 @@ class Room:
         async def deactivate_after_delay():
             await asyncio.sleep(deactivation_delay)
             self._deactivation_task = None
-            on_deactivate(self)
+            on_deactivate()
             LOGGER.info(f'Deactivating room <{self.id}> after {deactivation_delay}s without host')
             await self.deactivate()
         

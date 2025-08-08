@@ -80,7 +80,9 @@ class RoomManager:
 
         # Host disconnected
         LOGGER.info('Host disconnected, waiting a bit before closing room')
-        on_deactivate = lambda: self._active_room_count = max(0, self._active_room_count - 1)
+        def on_deactivate():
+            self._active_room_count = max(0, self._active_room_count - 1)
+        
         await room.defer_deactivation(
             on_deactivate, deactivation_delay=10 # TODO: revert to 300s (5m) for production
         )

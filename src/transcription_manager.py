@@ -62,8 +62,8 @@ class TranscriptionManager:
         self._num_sentences_to_broadcast = num_sentences_to_broadcast
         self._queue = asyncio.Queue()
 
-        self.rolling_transcription_delay = RollingAverage()
-        self.rolling_translation_delay = RollingAverage()
+        self.rolling_transcription_delay = RollingAverage(n=4)
+        self.rolling_translation_delay = RollingAverage(n=4)
 
         self._buffer_transcription = "" # Any text currently in the transcription buffer
         self._incomplete_sentence = "" # Any sentence that is out of the buffer but not completed
