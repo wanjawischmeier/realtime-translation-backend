@@ -133,48 +133,55 @@ endpoints:
 Used for tracking certain events and pageviews coming in from the frontend.
 
 To run:
-- `cd stats/umami`
-- `docker compose up -d`
+```bash
+cd stats/umami
+docker compose up -d
+```
 
 # Beszel
 Used for tracking backend performance metrics (gpu utilization etc.)
 
 To run:
-- `cd stats/beszel`
-- `docker compose up -d` (to start the beszel backend)
-- `cd agent`
-- `docker compose up -d` (to start the agent instance for the current system)
+```bash
+# To start the beszel server
+cd stats/beszel
+docker compose up -d
+
+# To start the agent instance for the current system
+cd agent # in stats/beszel/agent
+docker compose up -d
+```
 
 # TODOs
 - [x] Whisper Engine an Rauminstanzen binden
 - [x] Räume richtig öffnen/schließen
-    - [x] Ein Raum wird geöffnet wenn der Host joint
-    - [x] Ein Raum wird geschlossen, wenn der host rausgegangen ist (+ 5 min puffer, sodass Host neu reingehen kann falls mensch nur kurz rausfliegt)
-    - [x] Wenn sich die Host-Sprache ändert (erfordert neustart der engine), soll der host aus dem raum rausgehen und mit der neuen Sprache neu reingehen
-    - [x] Wenn der host einem bereits offenen raum mit geänderten parametern joint, wird der raum vom room manager neu gestartet
+  - [x] Ein Raum wird geöffnet wenn der Host joint
+  - [x] Ein Raum wird geschlossen, wenn der host rausgegangen ist (+ 5 minpuffer, sodass Host neu reingehen kann falls mensch nur kurz rausfliegt)
+  - [x] Wenn sich die Host-Sprache ändert (erfordert neustart der engine),soll der host aus dem raum rausgehen und mit der neuen Sprache neu reingehen
+  - [x] Wenn der host einem bereits offenen raum mit geänderten parametern joint, wird der raum vom room manager neu gestartet
 - [ ] Eine Restart-Option für Räume im Frontend implementieren
 - [ ] Websocket connects/disconnects handlen und Bugs fixen
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
 - [x] Use AVAILABLE_WHISPER_LANGS & AVAILABLE_LT_LANGS to verify frontend requests
-- [x] Expose required whisper args to cli
 - [ ] Endpoint to fetch human readable transcript for room (join all partial transcripts, with date timestamp)
   - [x] Provide endpoint
   - [ ] Join all partial transcripts
 - [ ] (Pause fetch loop when connected host is not streaming?)
 - [x] Respect whisper instance limit when activating rooms
 - [x] Whisper `device, compute_type` passthrough to cli from custom WhisperLiveKit fork
-    - github.com/substratoo/WhisperLiveKit
+  - https://github.com/substratoo/WhisperLiveKit
 - [x] Support whisper model unloading (in custom fork)
-    - Propably fine, now handled by gc
+  - Propably fine, now handled by gc
 - [x] Performance monitoring
-    - https://beszel.dev/guide/gpu
-    - (Write stats to log file? Not strictly necessary) -> Is now in umami
-    - Docker compose is set up in `stats/beszel`
+  - https://beszel.dev/guide/gpu
+  - (Write stats to log file? Not strictly necessary) -> Is now in umami
+  - Docker compose is set up in `stats/beszel`
 - [x] Umami stats
-    - Docker compose is set up in `stats/umami`
+  - Docker compose is set up in `stats/umami`
 - [ ] Prevent freeze (`No ASR output for 105.42s. Resetting buffer to prevent freezing.` not working)
-    - whisperlivekit/whisper_streaming_custom/online_asr.py - line 231
-    - Reset if delay greater than 20s?
+  - whisperlivekit/whisper_streaming_custom/online_asr.py - line 231
+  - Reset if delay greater than 20s?
 - [ ] Fix country coding in [transcription chunks](#transcript-chunk)
+  - No longer provide default sentence, instead make `sentence` field a dict of country codes
