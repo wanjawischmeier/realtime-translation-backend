@@ -12,6 +12,7 @@ def room_worker(room_id: str, audio_queue: AioQueue, transcript_queue: AioQueue,
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
+    LOGGER.info(f'Loading whisper model for {room_id}: {model}, diarization={diarization}, language={source_lang}')
     engine = TranscriptionEngine(
         model=model,
         diarization=diarization,
