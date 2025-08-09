@@ -13,7 +13,7 @@ endpoints:
   - name: frontend
     upstream:
       url: 5173
-  - name: backend
+  - name: backend>
     url: https://dynamic-freely-chigger.ngrok-free.app
     upstream:
       url: 8000
@@ -110,6 +110,22 @@ endpoints:
   "translation_delay": 0
 }
 ```
+
+# Umami
+Used for tracking certain events and pageviews coming in from the frontend.
+
+To run:
+- `cd stats/umami`
+- `docker compose up -d`
+
+# Beszel
+Used for tracking backend performance metrics (gpu utilization etc.)
+
+To run:
+- `cd stats/beszel`
+- `docker compose up -d` (to start the beszel backend)
+- `cd agent`
+- `docker compose up -d` (to start the agent instance for the current system)
 
 # TODOs
 - [x] Whisper Engine an Rauminstanzen binden
