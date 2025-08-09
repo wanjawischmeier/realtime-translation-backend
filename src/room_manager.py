@@ -64,8 +64,7 @@ class RoomManager:
             else:
                 # Configuration mismatch, restart room
                 LOGGER.info(f'Host joined already active room <{room_id}> with mismatching configuration, restarting room...')
-                await room.deactivate()
-                await room.activate(source_lang, target_lang)
+                await room.restart_engine(source_lang, additional_target_lang=target_lang)
         else:
             # Initial room activation
             if self._active_room_count >= MAX_WHISPER_INSTANCES:
@@ -76,6 +75,7 @@ class RoomManager:
             await room.activate(source_lang, [target_lang])
 
         # TODO: send 'now listening' to frontend
+        LOGGER.info(f'Attempting to start listening for host in room <{room_id}>...')
         await room.connection_manager.listen_to_host(websocket)
 
         # Host disconnected
