@@ -47,14 +47,14 @@ endpoints:
   "available_source_langs": [
     "de",
     "en",
-    ...
+    // ...
   ],
 
   // Languages that can be translated into by LibreTranslate
   "available_target_langs": [
     "ar",
     "az",
-    ...
+    // ...
   ],
 
   // The maximum number of rooms that can be handled by the hardware simultaniously
@@ -64,12 +64,12 @@ endpoints:
   "rooms": [
     {
       // Information provided per room
-      "id": ...,
-      "title": ...,
-      "description": ...,
-      "track": ...,
-      "location": ...,
-      "presenter": ...,
+      "id": "",
+      "title": "",
+      "description": "",
+      "track": "",
+      "location": "",
+      "presenter": "",
       "active": false
     }
   ]
@@ -88,24 +88,24 @@ endpoints:
       "sentences": [
         {
           "sent_idx": 0,
-          "sentence_de": ...,
-          "sentence_en": ...,
+          "sentence_de": "",
+          "sentence_en": "",
         },
         {
           "sent_idx": 1,
-          "sentence_de": ...,
+          "sentence_de": "",
           // Not all sentences will be available in the same languages
           // As translation happens asynchronously
         },
         {
           "sent_idx": 2,
-          "sentence_de": ...,
-          "sentence_en": ...,
+          "sentence_de": "",
+          "sentence_en": "",
         }
       ]
     }
   ],
-  "incomplete_sentence": ...,
+  "incomplete_sentence": "",
   "transcription_delay": 10.610000000000001,
   "translation_delay": 0
 }
