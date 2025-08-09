@@ -190,5 +190,6 @@ docker compose up -d
 - [ ] Fix country coding in [transcription chunks](#transcript-chunk)
   - No longer provide default sentence, instead make `sentence` field a dict of country codes
 - [x] Move whisper engine to seperate process
-- [ ] Prevent doubling of target langs
-- [ ] Ignore target langs that are equal to source lang (don't add to list)
+- [x] Proper target langs subscribe/unsubscribe
+  - [x] Prevent doubling of target langs
+  - [x] Ignore target langs that are equal to source lang (don't add to list)

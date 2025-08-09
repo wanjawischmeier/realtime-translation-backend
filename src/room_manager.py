@@ -53,9 +53,6 @@ class RoomManager:
         if room.active:
             if source_lang == room.transcription_manager.source_lang:
                 # Matching configuration
-                if not target_lang in room.translation_worker.target_langs:
-                    room.translation_worker.target_langs.append(target_lang)
-                
                 task = self._deactivation_tasks.get(room.id, None)
                 if task:
                     task.cancel() # Cancel room deactivation
@@ -64,7 +61,8 @@ class RoomManager:
             else:
                 # Configuration mismatch, restart room
                 LOGGER.info(f'Host joined already active room <{room_id}> with mismatching configuration, restarting room...')
-                await room.restart_engine(source_lang, additional_target_lang=target_lang)
+                room.translation_worker.subscribe_target_lang(target_lang)
+                await room.restart_engine(source_lang)
         else:
             # Initial room activation
             if self._active_room_count >= MAX_WHISPER_INSTANCES:
@@ -72,11 +70,11 @@ class RoomManager:
                 return
 
             self._active_room_count += 1
-            await room.activate(source_lang, [target_lang])
+            await room.activate(source_lang, {target_lang: 1})
 
         # TODO: send 'now listening' to frontend
         LOGGER.info(f'Attempting to start listening for host in room <{room_id}>...')
-        await room.connection_manager.listen_to_host(websocket)
+        await room.connection_manager.listen_to_host(websocket, target_lang)
 
         # Host disconnected
         LOGGER.info('Host disconnected, waiting a bit before closing room')
@@ -100,8 +98,7 @@ class RoomManager:
 
         LOGGER.info(f'Client joining room: {room_id}')
         try:
-            await room.connection_manager.connect_client(websocket)
-            room.translation_worker.target_langs.append(target_lang)
+            await room.connection_manager.connect_client(websocket, target_lang)
             LOGGER.info(f'Added {target_lang} to {room_id}.')
         except Exception as e:
             LOGGER.warning(f'Client connection failed:\n{e}')

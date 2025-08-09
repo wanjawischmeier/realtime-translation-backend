@@ -43,7 +43,7 @@ class Room:
             data['source_lang'] = self.transcription_manager.source_lang
         return data
     
-    async def activate(self, source_lang: str, target_langs: list[str], connection_manager: ConnectionManager=None):
+    async def activate(self, source_lang: str, target_langs: dict[str, int], connection_manager: ConnectionManager=None):
         logging.info(f'Activating self: {self.id}')
         self.active = True
         if self._deactivation_task:
@@ -58,18 +58,19 @@ class Room:
         self._room_process = RoomProcess(self.id, source_lang)
         self._room_process.start()
         
+        self.translation_worker = TranslationWorker(self.transcription_manager, target_langs=target_langs)
+        self.translation_worker.start()
+        
         if connection_manager:
             self.connection_manager = connection_manager
         else:
             self.connection_manager = ConnectionManager(
-                self.id, self.transcription_manager,
+                self.id, self.transcription_manager, self.translation_worker,
                 audio_chunk_recieved=self._room_process.send_audio_chunk,  # async proxy!
                 transcript_chunk_recieved=self.transcription_manager.submit_chunk,
                 transcript_chunk_provider=self._room_process.get_transcript_chunk,
                 restart_request_recieved=self.restart_engine
             )
-        self.translation_worker = TranslationWorker(self.transcription_manager, target_langs=target_langs)
-        self.translation_worker.start()
     
     async def deactivate(self) -> bool:
         if not self.active:
@@ -104,7 +105,7 @@ class Room:
             deactivate_after_delay()
         )
     
-    async def restart_engine(self, source_lang: str=None, target_langs: list[str]=None, additional_target_lang: str=None) -> bool:
+    async def restart_engine(self, source_lang: str=None, target_langs: list[str]=None) -> bool:
         if not self.active:
             LOGGER.warning(f'Tried to restart inactive room <{self.id}>')
             return False
@@ -113,8 +114,6 @@ class Room:
             source_lang = self.transcription_manager.source_lang
         if not target_langs:
             target_langs = self.translation_worker.target_langs
-        if additional_target_lang:
-            target_langs.append(additional_target_lang)
 
         await self.cancel()
         await self.activate(source_lang, target_langs, self.connection_manager) # Preserves ws connections across restart
