@@ -5,7 +5,6 @@ from connection_manager import ConnectionManager
 from transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
 from room_process import RoomProcess
-from io_config.cli import MODEL, DEVICE, COMPUTE_TYPE, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
 from io_config.logger import LOGGER
 
 class Room:
@@ -53,7 +52,6 @@ class Room:
         self.transcription_manager.transcript_generator()
         
         # Start the RoomProcess (subprocess)
-        LOGGER.info(f'Loading whisper model for {self.id}: {MODEL}, diarization={DIARIZATION}, language={source_lang}')
         self._room_process = RoomProcess(self.id, source_lang)
         self._room_process.start()
         
