@@ -119,7 +119,9 @@ class TranscriptionManager:
                 # Split into sentences
                 new_sentences_raw = sent_tokenize(text, language=self._punkt_lang)
                 new_sentences_raw, incomplete_sentence = self._filter_complete_sentences(new_sentences_raw)
-                self._incomplete_sentence = incomplete_sentence
+                if i == len(incoming_lines) - 1 and incomplete_sentence != self._incomplete_sentence:
+                    self._incomplete_sentence = incomplete_sentence
+                    updated = True
 
                 line_idx = len(self._lines) - len(incoming_lines) + i
                 if 0 <= line_idx < len(self._lines):
@@ -168,9 +170,11 @@ class TranscriptionManager:
                 else:
                     # New line
                     new_sentences = []
-                    for sent in new_sentences_raw:
-                        new_sent = {'sentence': sent}
-                        new_sentences.append(new_sent)
+                    for i, sent in enumerate(new_sentences_raw):
+                        new_sentences.append({
+                            'sent_idx': i,
+                            'sentence': sent
+                        })
                     new_line = {
                         'line_idx': len(self._lines),
                         'beg': beg,

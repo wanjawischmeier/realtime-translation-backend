@@ -28,6 +28,7 @@ tiktoken = "^0.9.0"
 mosestokenizer = "^1.2.1"
 nltk = "^3.9.1"
 whisperlivekit = {git = "https://github.com/substratoo/WhisperLiveKit.git", rev = "main"}
+aioprocessing = "^2.0.1"
 
 
 [build-system]
