@@ -1,14 +1,18 @@
 # Dependencies
-- `sudo apt-get install ffmpeg`
-- (`pyenv install 3.9.23`)
-- `pyenv local 3.9.23`
-- `poetry env use /home/username/.pyenv/versions/3.9.23/bin/python`
+```bash
+sudo apt-get install ffmpeg
+pyenv install 3.9.23 # if not installed already
+pyenv local 3.9.23
+poetry env use /home/username/.pyenv/versions/3.9.23/bin/python
+```
 
 # Run using
-- `ngrok start --all`
+```bash
+ngrok start --all
+```
 
 # Ngrok config:
-```
+```yaml
 endpoints:
   - name: frontend
     upstream:
@@ -185,3 +189,4 @@ docker compose up -d
   - Reset if delay greater than 20s?
 - [ ] Fix country coding in [transcription chunks](#transcript-chunk)
   - No longer provide default sentence, instead make `sentence` field a dict of country codes
+- [ ] Move whisper engine to seperate process
