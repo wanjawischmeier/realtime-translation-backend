@@ -23,13 +23,13 @@ endpoints:
 - http://localhost:3000: Umami frontend stats
 - http://localhost:8090: Beszel backend performance stats
 - http://localhost:5000: LibreTranslate instance
-- http://localhost:8000: Backend fastapi http
+- http://localhost:8000: FastAPI backend for http traffic
   - `GET /health`: Health check, returns `{"status": "ok"}` or `{"status": "not ready"}`
   - `POST /auth`: Checks password, returns `{"status": "ok"}` or `{"status": "fail"}`
   - `GET /room_list`: Returns a [room list](#room-list)
   - `GET /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang`. Joins all partial transcripts available for that room.
-- [ws://localhost:8000/room/{room_id}/{role}/{source_lang}/{target_lang}](localhost:8000):
-  - Websocket for handling streaming
+- `ws://localhost:8000/room/{room_id}/{role}/{source_lang}/{target_lang}`
+  - FastAPI websocket for handling streaming
   - Bidirectional
     - expects audio stream from host (`audio/webm;codecs=opus`)
     - sends all available transcriptions to host and clients in [chunks](#transcript-chunk)
