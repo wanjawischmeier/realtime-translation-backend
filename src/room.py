@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from typing import Callable
 
 from connection_manager import ConnectionManager
@@ -44,7 +43,7 @@ class Room:
         return data
     
     async def activate(self, source_lang: str, target_langs: dict[str, int], connection_manager: ConnectionManager=None):
-        logging.info(f'Activating self: {self.id}')
+        LOGGER.info(f'Activating self: {self.id}')
         self.active = True
         if self._deactivation_task:
             self._deactivation_task.cancel() # Cancel room deactivation

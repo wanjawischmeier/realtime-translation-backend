@@ -1,7 +1,8 @@
 import asyncio
-import logging
 from aioprocessing import AioQueue
 from whisperlivekit import TranscriptionEngine, AudioProcessor
+
+from io_config.logger import LOGGER
 
 STOP_SIGNAL = b"__STOP__"  # Sentinel value for graceful shutdown
 
@@ -28,7 +29,7 @@ def room_worker(room_id: str, audio_queue: AioQueue, transcript_queue: AioQueue,
         while True:
             chunk = await audio_queue.coro_get()
             if chunk == STOP_SIGNAL:
-                logging.info(f'Worker process for room <{room_id}> recieved termination signal, exiting...')
+                LOGGER.info(f'Worker process for room <{room_id}> recieved termination signal, exiting...')
                 break
             await audio_processor.process_audio(chunk)
 
@@ -50,4 +51,4 @@ def room_worker(room_id: str, audio_queue: AioQueue, transcript_queue: AioQueue,
             pass # TODO: do something here? Gets hit somethimes, propably not a problem
         
     loop.run_until_complete(main())
-    logging.info(f'Worker process for room <{room_id}> stopped')
+    LOGGER.info(f'Worker process for room <{room_id}> stopped')
