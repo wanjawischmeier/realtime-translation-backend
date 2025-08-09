@@ -5,11 +5,14 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from io_config.logger import LOGGER
 from transcription_manager import TranscriptionManager
+from translation_worker import TranslationWorker
 
 
 class ConnectionManager:
     def __init__(
-            self, room_id: str, transcription_manager: TranscriptionManager,
+            self, room_id: str,
+            transcription_manager: TranscriptionManager,
+            translation_worker: TranslationWorker,
             audio_chunk_recieved: Callable[[Any], Awaitable[None]],     # async -> send_audio_chunk
             transcript_chunk_recieved: Callable[[dict], None],          # sync  -> transcription_manager.submit_chunk
             transcript_chunk_provider: CoroutineType,                   # async -> get_transcript_chunk
@@ -17,6 +20,7 @@ class ConnectionManager:
         ):
         self._room_id = room_id
         self._transcription_manager = transcription_manager
+        self._translation_worker = translation_worker
         self._audio_chunk_recieved = audio_chunk_recieved
         self._transcript_chunk_recieved = transcript_chunk_recieved
         self._transcript_chunk_provider = transcript_chunk_provider
@@ -24,12 +28,13 @@ class ConnectionManager:
         self._host: WebSocket = None
         self._clients: list[WebSocket] = []
 
-    async def listen_to_host(self, websocket: WebSocket):
+    async def listen_to_host(self, websocket: WebSocket, target_lang: str):
         if self._host:   # can't connect to multiple hosts at the same time
             await websocket.close(code=1003, reason='Multiple hosts not allowed')
             return
         
         self._host = websocket
+        self._translation_worker.subscribe_target_lang(target_lang)
         self._transcript_generator_handler_task = asyncio.create_task(
             self._handle_whisper_generator()
         )
@@ -45,10 +50,12 @@ class ConnectionManager:
         except WebSocketDisconnect:
             self.cancel()
             self._host = None
+            self._translation_worker.unsubscribe_target_lang(target_lang)
             LOGGER.info(f'Host disconnected in room <{self._room_id}>')
 
-    async def connect_client(self, websocket: WebSocket):
+    async def connect_client(self, websocket: WebSocket, target_lang: str):
         self._clients.append(websocket)
+        self._translation_worker.subscribe_target_lang(target_lang)
         LOGGER.info(f'Client {len(self._clients)} connected in room <{self._room_id}>')
 
         try:
@@ -56,6 +63,7 @@ class ConnectionManager:
                 await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
         except WebSocketDisconnect:
             self._clients.remove(websocket)
+            self._translation_worker.unsibscribe_target_lang(target_lang)
             LOGGER.info(f'Client {len(self._clients) + 1} disconnected in room <{self._room_id}>') # TODO: fix recognition of client detection
     
     async def _handle_whisper_generator(self):

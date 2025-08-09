@@ -10,7 +10,7 @@ from transcription_manager import TranscriptionManager
 
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0, target_langs: list[str]=[]):
+    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0, target_langs: dict[str, int]={}):
         super().__init__()
         self.target_langs = target_langs
         self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
@@ -18,7 +18,25 @@ class TranslationWorker(threading.Thread):
         self.daemon = True
         self._transcription_manager: TranscriptionManager = transcription_manager
         self._stop_event = threading.Event()
+    
+    def subscribe_target_lang(self, target_lang: str):
+        """Increment count for subscription to a target language."""
+        if target_lang == self._transcription_manager.source_lang:
+            return  # don't allow source lang subscription
+        
+        current_count = self.target_langs.get(target_lang, 0)
+        self.target_langs[target_lang] = current_count + 1
 
+    def unsubscribe_target_lang(self, target_lang: str):
+        """Decrement count; remove target lang if count reaches zero."""
+        if target_lang not in self.target_langs:
+            return
+
+        self.target_langs[target_lang] -= 1
+
+        if self.target_langs[target_lang] <= 0:
+            del self.target_langs[target_lang]
+    
     def stop(self):
         self._stop_event.set()
 
@@ -29,7 +47,7 @@ class TranslationWorker(threading.Thread):
                 # Check translation queue of transcription manager
                 to_translate = self._transcription_manager.poll_sentences_to_translate()
 
-                for target_lang in self.target_langs:
+                for target_lang in self.target_langs.keys():
                     translation_results = []
                     for entry in to_translate:
                         if target_lang in entry['translated_langs']:
