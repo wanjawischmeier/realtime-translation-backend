@@ -1,7 +1,7 @@
 import asyncio
-import logging
 from multiprocessing import Process
 from aioprocessing import AioQueue
+from io_config.logger import LOGGER
 from room_worker import room_worker, STOP_SIGNAL
 
 from io_config.cli import MODEL, DEVICE, COMPUTE_TYPE, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
@@ -33,7 +33,7 @@ class RoomProcess:
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, self.process.join, 10) # 10 second timeout
         if self.process.is_alive():
-            logging.warning(f'Failed to stop worker process for room <{self._room_id}>')
+            LOGGER.warning(f'Failed to stop worker process for room <{self._room_id}>')
        
 
     async def send_audio_chunk(self, chunk: bytes):

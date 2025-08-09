@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from fastapi import WebSocket
 
 from pretalx_api_wrapper import PretalxAPI
