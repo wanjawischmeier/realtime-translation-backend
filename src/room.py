@@ -54,7 +54,7 @@ class Room:
             self._deactivation_task = None
         
         LOGGER.info(f'Loading whisper model for {self.id}: {MODEL}, diarization={DIARIZATION}, language={source_lang}')
-        self.transcription_engine = transcription_engine = TranscriptionEngine(
+        self.transcription_engine = TranscriptionEngine(
             model=MODEL, diarization=DIARIZATION, lan=source_lang,
             vac=VAC, buffer_trimming=BUFFER_TRIMMING,
             min_chunk_size=MIN_CHUNK_SIZE, vac_chunk_size=VAC_CHUNK_SIZE,
@@ -62,7 +62,7 @@ class Room:
         )
         self.transcription_manager = TranscriptionManager(source_lang, room_id=self.id)
             
-        self.audio_processor = AudioProcessor(transcription_engine=transcription_engine)
+        self.audio_processor = AudioProcessor(transcription_engine=self.transcription_engine)
         whisper_generator = await self.audio_processor.create_tasks()
         
         if connection_manager:

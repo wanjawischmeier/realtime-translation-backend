@@ -23,7 +23,7 @@ class ConnectionManager:
             self._handle_whisper_generator(whisper_generator)
         )
         self._transcript_generator_handler_task = asyncio.create_task(
-            self._handle_transcript_generator(transcription_manager.transcript_generator())
+            self._handle_transcript_generator(transcription_manager.transcript_generator()) # TODO: pass generator directly
         )
         LOGGER.info(f'Now listening for whisper and transcript generators in room <{room_id}>')
 
@@ -38,8 +38,7 @@ class ConnectionManager:
         try:
             while True:
                 message = await websocket.receive_bytes()
-                await self._audio_processor.process_audio(message) # TODO: switch over to callback
-                # await self._audio_chunk_recieved(message)
+                await self._audio_chunk_recieved(message)
                 
                 # TODO: test new listener
                 """
@@ -78,8 +77,7 @@ class ConnectionManager:
     
     async def _handle_whisper_generator(self, whisper_generator):
         async for response in whisper_generator:
-            self._transcription_manager.submit_chunk(response) # TODO: switch over to callback
-            # self._transcript_chunk_recieved(response)
+            self._transcript_chunk_recieved(response)
             
         await self._host.send_json({"type": "ready_to_stop"}) # TODO: remove this if dev frontend no longer needed
         self._whisper_generator_handler_task.cancel() # TODO: check if this is necessary/working
