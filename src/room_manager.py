@@ -64,7 +64,7 @@ class RoomManager:
             else:
                 # Configuration mismatch, restart room
                 LOGGER.info(f'Host joined already active room <{room_id}> with mismatching configuration, restarting room...')
-                await self._deactivate_room(room)
+                await room.deactivate()
                 await room.activate(source_lang, target_lang)
         else:
             # Initial room activation
