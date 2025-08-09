@@ -41,29 +41,29 @@ endpoints:
 
 # Data Structures
 ## Room List
-```json
+```python
 {
-  // Languages available for transcription by the whisper engine
+  # Languages available for transcription by the whisper engine
   "available_source_langs": [
     "de",
     "en",
-    // ...
+    # ...
   ],
 
-  // Languages that can be translated into by LibreTranslate
+  # Languages that can be translated into by LibreTranslate
   "available_target_langs": [
     "ar",
     "az",
-    // ...
+    # ...
   ],
 
-  // The maximum number of rooms that can be handled by the hardware simultaniously
+  # The maximum number of rooms that can be handled by the hardware simultaniously
   "max_active_rooms": 2,
 
-  // List of all rooms that are relevant at this point in time
+  # List of all rooms that are relevant at this point in time
   "rooms": [
     {
-      // Information provided per room
+      # Information provided per room
       "id": "",
       "title": "",
       "description": "",
@@ -77,7 +77,7 @@ endpoints:
 ```
 
 ## Transcript Chunk
-```json
+```python
 {
   "last_n_sents": [
     {
@@ -94,8 +94,8 @@ endpoints:
         {
           "sent_idx": 1,
           "sentence_de": "",
-          // Not all sentences will be available in the same languages
-          // As translation happens asynchronously
+          # Not all sentences will be available in the same languages
+          # As translation happens asynchronously
         },
         {
           "sent_idx": 2,
