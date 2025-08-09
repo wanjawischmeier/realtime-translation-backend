@@ -24,8 +24,8 @@ endpoints:
 - http://localhost:8090: Beszel backend performance stats
 - http://localhost:5000: LibreTranslate instance
 - http://localhost:8000: FastAPI backend for http traffic
-  - `GET /health`: Health check, returns `{"status": "ok"}` or `{"status": "not ready"}`
-  - `POST /auth`: Checks password, returns `{"status": "ok"}` or `{"status": "fail"}`
+  - `GET /health`: Health check, returns [status](#health-check)
+  - `POST /auth`: Checks password, returns [result](#auth-check)
   - `GET /room_list`: Returns a [room list](#room-list)
   - `GET /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang`. Joins all partial transcripts available for that room.
 - `ws://localhost:8000/room/{room_id}/{role}/{source_lang}/{target_lang}`
@@ -39,8 +39,8 @@ endpoints:
     - `role`: Can be `host` or `client`
     - `source_lang`/`target_lang`: The respective country codes, e.g. `de`, `en`
 
-# Data Structures
-## Room List
+# Data structures
+## Room list
 ```python
 {
   # Languages available for transcription by the whisper engine
@@ -76,7 +76,7 @@ endpoints:
 }
 ```
 
-## Transcript Chunk
+## Transcript chunk
 ```python
 {
   "last_n_sents": [
@@ -109,6 +109,24 @@ endpoints:
   "transcription_delay": 10.610000000000001,
   "translation_delay": 0
 }
+```
+
+## Health check
+```python
+# If server is ready to accept requests
+{"status": "ok"}
+
+# If server is running, but not ready to accept requests
+{"status": "not ready"}
+```
+
+## Auth check
+```python
+# If password is valid
+{"status": "ok"}
+
+# If password is invalid
+{"status": "fail"}
 ```
 
 # Umami
