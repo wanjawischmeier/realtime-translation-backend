@@ -1,8 +1,9 @@
 import asyncio
 from multiprocessing import Process
+from typing import Awaitable, Callable
 from aioprocessing import AioQueue
 from io_config.logger import LOGGER
-from room_worker import room_worker, STOP_SIGNAL
+from room_worker import room_worker, READY_SIGNAL, STOP_SIGNAL
 
 from io_config.cli import MODEL, DEVICE, COMPUTE_TYPE, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
 
@@ -11,6 +12,7 @@ class RoomProcess:
         self._room_id = room_id
         self.audio_queue = AioQueue()
         self.transcript_queue = AioQueue()
+        self._on_ready: Callable[[None], Awaitable[None]] = None
         
         self.process = Process(
             target=room_worker,
@@ -22,7 +24,8 @@ class RoomProcess:
             daemon=True
         )
     
-    def start(self):
+    def start(self, on_ready: Callable[[None], Awaitable[None]]=None):
+        self._on_ready = on_ready
         self.process.start()
 
     async def stop(self):
@@ -40,4 +43,9 @@ class RoomProcess:
         await self.audio_queue.coro_put(chunk)
     
     async def get_transcript_chunk(self):
-        return await self.transcript_queue.coro_get()
+        chunk = await self.transcript_queue.coro_get()
+        if chunk == READY_SIGNAL:
+            if self._on_ready:
+                await self._on_ready()
+        else:
+            return chunk

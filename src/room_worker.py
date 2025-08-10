@@ -4,6 +4,7 @@ from whisperlivekit import TranscriptionEngine, AudioProcessor
 
 from io_config.logger import LOGGER
 
+READY_SIGNAL = b"__READY__"  # Sentinel value for signaling readiness of audio buffer
 STOP_SIGNAL = b"__STOP__"  # Sentinel value for graceful shutdown
 
 def room_worker(room_id: str, audio_queue: AioQueue, transcript_queue: AioQueue, source_lang,
@@ -42,6 +43,7 @@ def room_worker(room_id: str, audio_queue: AioQueue, transcript_queue: AioQueue,
     async def main():
         af_task = asyncio.create_task(audio_feeder())
         wf_task = asyncio.create_task(whisper_feeder())
+        await transcript_queue.coro_put(READY_SIGNAL)
         await af_task  # Wait until audio_feeder finishes (stop sentinel received)
         
         # After audio feeder ends, cancel whisper feeder to stop transcription
