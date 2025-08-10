@@ -75,7 +75,7 @@ endpoints:
       "track": "",
       "location": "",
       "presenter": "",
-      "active": false
+      "host_connection_id": ""
     }
   ]
 }
@@ -167,6 +167,7 @@ docker compose up -d
   - [x] Send "ready" packet
 - [x] Eine Restart-Option für Räume im Frontend implementieren
 - [ ] Websocket connects/disconnects handlen und Bugs fixen
+  - [x] Unique host id
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it

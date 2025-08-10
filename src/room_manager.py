@@ -3,7 +3,7 @@ from fastapi import WebSocket
 
 from pretalx_api_wrapper import PretalxAPI
 from room import Room
-from io_config.config import AVAILABLE_WHISPER_LANGS, MAX_WHISPER_INSTANCES, AVAILABLE_LT_LANGS
+from io_config.config import AVAILABLE_WHISPER_LANGS, CLOSE_ROOM_AFTER_SECONDS, MAX_WHISPER_INSTANCES, AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
 
 
@@ -82,7 +82,7 @@ class RoomManager:
             self._active_room_count = max(0, self._active_room_count - 1)
         
         room.defer_deactivation(
-            on_deactivate, deactivation_delay=10 # TODO: revert to 300s (5m) for production
+            on_deactivate, deactivation_delay=CLOSE_ROOM_AFTER_SECONDS
         )
 
     async def join_room_as_client(self, client: WebSocket, room_id:str, target_lang:str):

@@ -1,8 +1,8 @@
 import asyncio
 from types import CoroutineType
 from typing import Any, Awaitable, Callable
+import uuid
 from fastapi import WebSocket, WebSocketDisconnect
-from fastapi.websockets import WebSocketState
 from flask import json
 
 from io_config.logger import LOGGER
@@ -28,21 +28,27 @@ class ConnectionManager:
         self.transcript_chunk_provider = transcript_chunk_provider
         self._host_signal_recieved = host_signal_recieved
         self._host: WebSocket = None
+        self.host_id: str = None
         self._clients: list[WebSocket] = []
 
     async def listen_to_host(self, host: WebSocket=None, target_lang: str=None):
         if not host:
-            if self._host:
-                host = self._host # Use existing host connection
-            else:
+            if not self._host:
                 LOGGER.error(f'Unable to listen to host in room <{self._room_id}>: Unknown host')
                 await host.close(code=1003, reason='No host provided by manager (internal error)')
                 return
+            # Otherwise use existing host connection
         elif self._host: # Can't connect to multiple hosts at the same time
             await host.close(code=1003, reason='Multiple hosts not allowed')
             return
+        else:
+            # Establish new host connection
+            self._host = host
+            self.host_id = str(uuid.uuid4())
+            await self._host.send_json({'info': {
+                'connection_id': self.host_id
+            }})
         
-        self._host = host
         if target_lang:
             self.translation_worker.subscribe_target_lang(target_lang)
         
@@ -53,8 +59,7 @@ class ConnectionManager:
             self._handle_transcript_generator(self.transcription_manager.transcript_generator())
         )
         
-        if host.client_state == WebSocketState.CONNECTED:
-            await self._host.send_json(self.transcription_manager.last_transcript_chunk) # Inital transcript chunk
+        await self._host.send_json(self.transcription_manager.last_transcript_chunk) # Inital transcript chunk
         LOGGER.info(f'Host connected in room <{self._room_id}>, listening...')
 
         try:
@@ -84,6 +89,9 @@ class ConnectionManager:
                 self.translation_worker.unsubscribe_target_lang(target_lang)
         except RuntimeError as error:
             LOGGER.warning(f'Runtime errror whilst listening to host in room <{self._room_id}>:\n{error}')
+    
+    def dereference_host(self):
+        self.host_id = ''
         
     async def connect_client(self, client: WebSocket, target_lang: str):
         self._clients.append(client)
@@ -109,9 +117,9 @@ class ConnectionManager:
                 LOGGER.error(f'Unable to send "ready_to_recieve_audio" in room <{self._room_id}>: Unknown host')
                 return
         
-        await host.send_json({
-            'status': 'ready_to_recieve_audio'
-        })
+        await host.send_json({'info': {
+            'ready_to_recieve_audio': True
+        }})
     
     async def _handle_whisper_generator(self):
         while True:

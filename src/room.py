@@ -27,6 +27,11 @@ class Room:
         self._room_process: RoomProcess = None
     
     def get_data(self):
+        host_connection_id = ''
+        if self.connection_manager:
+            if self.connection_manager.host_id:
+                host_connection_id = self.connection_manager.host_id
+        
         data = {
             'id': self.id,
             'title': self.title,
@@ -34,7 +39,7 @@ class Room:
             'track': self.track,
             'location': self.location,
             'presenter': self.presenter,
-            'active': self.active
+            'host_connection_id': host_connection_id
         }
 
         if self.active:
@@ -80,6 +85,7 @@ class Room:
             
         # TODO: properly close room
         await self.cancel()
+        self.connection_manager.dereference_host()
         self.active = False
         return True
     

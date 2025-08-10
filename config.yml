@@ -16,6 +16,7 @@ whisper:
     - de
     - en
   max_instances: 2
+  close_room_after_seconds: 10 # TODO: revert to 300s (5m) for production
 
 # LibreTranslate-Section
 libretranslate:
