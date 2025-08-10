@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "src/whisper_server.py",
             "console": "integratedTerminal",
-            "args": "--model tiny --source-lang de --target-lang en --timeout 4 --log-transcripts --device cpu"
+            "args": "--model medium --source-lang de --target-lang en --timeout 4 --log-transcripts --device cpu"
         },
         {
             "name": "Python Debugger: Current File",
