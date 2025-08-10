@@ -165,7 +165,7 @@ docker compose up -d
   - [x] Wenn sich die Host-Sprache ändert (erfordert neustart der engine),soll der host aus dem raum rausgehen und mit der neuen Sprache neu reingehen
   - [x] Wenn der host einem bereits offenen raum mit geänderten parametern joint, wird der raum vom room manager neu gestartet
   - [x] Send "ready" packet
-- [ ] Eine Restart-Option für Räume im Frontend implementieren
+- [x] Eine Restart-Option für Räume im Frontend implementieren
 - [ ] Websocket connects/disconnects handlen und Bugs fixen
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen

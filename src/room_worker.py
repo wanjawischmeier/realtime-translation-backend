@@ -43,6 +43,7 @@ def room_worker(room_id: str, audio_queue: AioQueue, transcript_queue: AioQueue,
     async def main():
         af_task = asyncio.create_task(audio_feeder())
         wf_task = asyncio.create_task(whisper_feeder())
+        LOGGER.info(f'Worker process for room <{room_id}> ready')
         await transcript_queue.coro_put(READY_SIGNAL)
         await af_task  # Wait until audio_feeder finishes (stop sentinel received)
         
