@@ -41,3 +41,6 @@ def get_available_languages():
         LOGGER.error("Server returned HTTP status {code}".format(code=response.status_code))
     return response.json()[0]['targets']
 AVAILABLE_LT_LANGS: Final[list[str]] = get_available_languages()
+
+# Data-Section
+TRANSCRIPT_DB_DIRECTORY: Final[str] = CONFIG['data']['transcript_db_directory']

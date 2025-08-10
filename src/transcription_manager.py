@@ -87,13 +87,6 @@ class TranscriptionManager:
         except TypeError as e:
             LOGGER.error(f"Error parsing time string '{time_str}': {e}")
             return 0
-        
-    def _format_time(self, seconds: int) -> str:
-        """Convert seconds to HH:MM:SS format."""
-        h = seconds // 3600
-        m = (seconds % 3600) // 60
-        s = seconds % 60
-        return f"{h:02d}:{m:02d}:{s:02d}"
     
     def _filter_complete_sentences(self, sentences) -> tuple[list[str], str]:
         """
@@ -289,10 +282,6 @@ class TranscriptionManager:
             self._log_transcript_to_file()
             self._log_to_translate()
 
-            transcript = self.get_human_readable_transcript("en")
-            with open(f'{self.log_directory}/human_transcript.txt', 'w') as f:
-                f.write(transcript)
-
         # write changes to disk
         with open(self._transcript_db_path, 'wb') as pkl_file:
             pickle.dump(self._lines, pkl_file)
@@ -362,44 +351,6 @@ class TranscriptionManager:
             'transcription_delay': self.rolling_transcription_delay.get_average(),
             'translation_delay': self.rolling_translation_delay.get_average()
         }
-    
-    def get_human_readable_transcript(self, lang: str, transcript_db_path: str=None) -> str:
-        """Generate a human readable transcript string in the desired language."""
-        lines_output = []
-        if transcript_db_path and os.path.exists(transcript_db_path):
-            with open(transcript_db_path, 'rb') as pkl_file:
-                lines = pickle.load(pkl_file)
-        else:
-            lines = self._lines
-        
-        for line in lines:
-            # Format begin and end time
-            beg_formatted = self._format_time(line['beg'])
-            end_formatted = self._format_time(line['end'])
-            time_range = f"{beg_formatted} - {end_formatted}"
-            
-            # Prepare speaker label if it is known
-            speaker_label = ""
-            if line.get("speaker", -1) != -1:
-                speaker_label = f"{line['speaker']}: "
-            
-            # Assemble text sentences depending on lang
-            if lang == self.source_lang:
-                # Use original sentences unconditionally
-                text = " ".join(sentence['content'][lang] for sentence in line.get('sentences', []))
-            else:
-                # Only include translated sentences where available (non-empty)
-                text = " ".join(
-                    sentence[lang]
-                    for sentence in line.get('sentences', [])
-                    if sentence.get(lang)
-                )
-            
-            # Combine everything for the line
-            lines_output.append(f"[{speaker_label}{time_range}]\n{text}")
-        
-        # Join all lines into one string with newlines
-        return "\n".join(lines_output)
 
     def _add_to_translation_queue(self, line_idx, sent_idx, sentence):
         # Find existing entry for this (line_idx, sent_idx)
