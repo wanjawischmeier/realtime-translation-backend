@@ -2,6 +2,8 @@ import asyncio
 from types import CoroutineType
 from typing import Any, Awaitable, Callable
 from fastapi import WebSocket, WebSocketDisconnect
+from fastapi.websockets import WebSocketState
+from flask import json
 
 from io_config.logger import LOGGER
 from transcription_manager import TranscriptionManager
@@ -16,76 +18,106 @@ class ConnectionManager:
             audio_chunk_recieved: Callable[[Any], Awaitable[None]],     # async -> send_audio_chunk
             transcript_chunk_recieved: Callable[[dict], None],          # sync  -> transcription_manager.submit_chunk
             transcript_chunk_provider: CoroutineType,                   # async -> get_transcript_chunk
-            restart_request_recieved: Callable[[None], Awaitable[None]]
+            host_signal_recieved: Callable[[str], bool]
         ):
         self._room_id = room_id
-        self._transcription_manager = transcription_manager
-        self._translation_worker = translation_worker
-        self._audio_chunk_recieved = audio_chunk_recieved
-        self._transcript_chunk_recieved = transcript_chunk_recieved
-        self._transcript_chunk_provider = transcript_chunk_provider
-        self._restart_request_recieved = restart_request_recieved
+        self.transcription_manager = transcription_manager
+        self.translation_worker = translation_worker
+        self.audio_chunk_recieved = audio_chunk_recieved
+        self.transcript_chunk_recieved = transcript_chunk_recieved
+        self.transcript_chunk_provider = transcript_chunk_provider
+        self._host_signal_recieved = host_signal_recieved
         self._host: WebSocket = None
         self._clients: list[WebSocket] = []
 
-    async def listen_to_host(self, websocket: WebSocket, target_lang: str):
-        if self._host:   # can't connect to multiple hosts at the same time
-            await websocket.close(code=1003, reason='Multiple hosts not allowed')
+    async def listen_to_host(self, host: WebSocket=None, target_lang: str=None):
+        if not host:
+            if self._host:
+                host = self._host # Use existing host connection
+            else:
+                LOGGER.error(f'Unable to listen to host in room <{self._room_id}>: Unknown host')
+                await host.close(code=1003, reason='No host provided by manager (internal error)')
+                return
+        elif self._host: # Can't connect to multiple hosts at the same time
+            await host.close(code=1003, reason='Multiple hosts not allowed')
             return
         
-        self._host = websocket
-        self._translation_worker.subscribe_target_lang(target_lang)
-        self._transcript_generator_handler_task = asyncio.create_task(
+        self._host = host
+        if target_lang:
+            self.translation_worker.subscribe_target_lang(target_lang)
+        
+        self._whisper_generator_handler_task = asyncio.create_task(
             self._handle_whisper_generator()
         )
         self._transcript_generator_handler_task = asyncio.create_task(
-            self._handle_transcript_generator(self._transcription_manager.transcript_generator())
+            self._handle_transcript_generator(self.transcription_manager.transcript_generator())
         )
         
-        await self._host.send_json(self._transcription_manager.last_transcript_chunk) # Inital transcript chunk
+        if host.client_state == WebSocketState.CONNECTED:
+            await self._host.send_json(self.transcription_manager.last_transcript_chunk) # Inital transcript chunk
         LOGGER.info(f'Host connected in room <{self._room_id}>, listening...')
 
         try:
             while True:
-                message = await websocket.receive_bytes()
-                await self._audio_chunk_recieved(message)
+                data = await host.receive()
+                if "bytes" in data:
+                    audio_bytes = data["bytes"]
+                    await self.audio_chunk_recieved(audio_bytes)
+                elif "text" in data:
+                    text_data = data["text"]
+                    message = json.loads(text_data)
+                    if 'signal' in message:
+                        signal = message['signal']
+                        await self._host_signal_recieved(signal)
+                    else:
+                        LOGGER.warning(f'Recieved unknown json object in room <{self._room_id}>')
+                else:
+                    LOGGER.warning(f'Recieved data in unknown format from host of room <{self._room_id}>:\n{data}')
         except WebSocketDisconnect:
+            LOGGER.info(f'Host disconnected in room <{self._room_id}>')
             self.cancel()
             self._host = None
-            self._translation_worker.unsubscribe_target_lang(target_lang)
-            LOGGER.info(f'Host disconnected in room <{self._room_id}>')
-
-    async def connect_client(self, websocket: WebSocket, target_lang: str):
-        self._clients.append(websocket)
-        self._translation_worker.subscribe_target_lang(target_lang)
+            if target_lang:
+                self.translation_worker.unsubscribe_target_lang(target_lang)
+        
+    async def connect_client(self, client: WebSocket, target_lang: str):
+        self._clients.append(client)
+        self.translation_worker.subscribe_target_lang(target_lang)
         LOGGER.info(f'Client {len(self._clients)} connected in room <{self._room_id}>')
 
         try:
             while True:
                 await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
         except WebSocketDisconnect:
-            self._clients.remove(websocket)
-            self._translation_worker.unsibscribe_target_lang(target_lang)
+            self._clients.remove(client)
+            self.translation_worker.unsubscribe_target_lang(target_lang)
             LOGGER.info(f'Client {len(self._clients) + 1} disconnected in room <{self._room_id}>') # TODO: fix recognition of client detection
     
-    async def ready_to_recieve_audio(self):
+    async def ready_to_recieve_audio(self, host: WebSocket=None):
         """
         To be called once audio_chunk_recieved is ready to recieve audio chunks 
         """
-        await self._host.send_json({
+        if not host:
+            if self._host:
+                host = self._host
+            else:
+                LOGGER.error(f'Unable to send "ready_to_recieve_audio" in room <{self._room_id}>: Unknown host')
+                return
+        
+        await host.send_json({
             'status': 'ready_to_recieve_audio'
         })
     
     async def _handle_whisper_generator(self):
         while True:
-            chunk = await self._transcript_chunk_provider()
+            chunk = await self.transcript_chunk_provider()
             if chunk: # Might be None if chunk contained sentinel value
-                self._transcript_chunk_recieved(chunk)
+                self.transcript_chunk_recieved(chunk)
     
     async def _handle_transcript_generator(self, transcript_generator):
         async for transcript in transcript_generator:
-            print(f'Result for room <{self._room_id}>:')
-            print(transcript)
+            LOGGER.info(f'Result for room <{self._room_id}>:')
+            LOGGER.info(transcript)
             
             await self._host.send_json(transcript) # Host also wants to recieve transcript
             for client in self._clients:
@@ -101,5 +133,7 @@ class ConnectionManager:
         self._transcript_generator_handler_task.cancel() # TODO: check if this is necessary/working
 
     def cancel(self):
+        if self._whisper_generator_handler_task:
+            self._whisper_generator_handler_task.cancel()
         if self._transcript_generator_handler_task:
             self._transcript_generator_handler_task.cancel()
