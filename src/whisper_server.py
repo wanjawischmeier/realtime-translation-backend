@@ -2,7 +2,7 @@ import asyncio
 import subprocess
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from whisperlivekit import get_web_interface_html
@@ -10,6 +10,7 @@ from whisperlivekit import get_web_interface_html
 from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
 from io_config.logger import LOGGER
 from room_manager import room_manager
+from transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
 
 server_ready = False
 
@@ -72,19 +73,13 @@ async def auth(request: Request):
 async def get_room_list():
     return JSONResponse(room_manager.get_room_list())
 
-@app.websocket("/room")
-async def get_room(websocket: WebSocket):
-    await websocket.accept()
-
-    try:
-        while True:
-                await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
-    except WebSocketDisconnect:
-        LOGGER.info(f'Client x disconnected')
+@app.get("/transcript_list")
+async def get_transcript_list():
+    return JSONResponse(get_available_transcript_list())
 
 @app.get("/room/{room_id}/transcript/{target_lang}")
 async def connect_to_room(room_id: str, target_lang: str):
-    return PlainTextResponse(f'Transcript placeholder for room <{room_id}> in {target_lang}')
+    return PlainTextResponse(compile_transcript_from_room_id(room_id, target_lang))
 
 @app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}")
 async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str):

@@ -23,3 +23,7 @@ libretranslate:
   host: 127.0.0.1 # Host to bind LibreTranslate server
   port: 5000 # Port to bind LibreTranslate server
   langs: 'https://libretranslate.com/languages'
+
+# Data-Section
+data:
+  transcript_db_directory: 'transcripts_db'

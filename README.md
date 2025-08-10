@@ -31,7 +31,8 @@ endpoints:
   - `GET /health`: Health check, returns [status](#health-check)
   - `POST /auth`: Checks password, returns [result](#auth-check)
   - `GET /room_list`: Returns a [room list](#room-list)
-  - `GET /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang`. Joins all partial transcripts available for that room.
+  - `GET /transcript_list`: Returns a list of [transcript infos](#transcript-infos)
+  - `GET /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang` as a string. Joins all partial transcripts available for that room.
 - `ws://localhost:8000/room/{room_id}/{role}/{source_lang}/{target_lang}`
   - FastAPI websocket for handling streaming
   - Bidirectional
@@ -139,6 +140,23 @@ endpoints:
 {"status": "fail"}
 ```
 
+## Transcript infos
+```python
+[
+  {
+    "id": "room_id_0",
+    "firstChunkTimestamp": 0,
+    "lastChunkTimestamp": 0
+  },
+  {
+    "id": "room_id_1",
+    "firstChunkTimestamp": 0,
+    "lastChunkTimestamp": 0
+  },
+  # ...
+]
+```
+
 # Umami
 Used for tracking certain events and pageviews coming in from the frontend.
 
@@ -178,11 +196,12 @@ docker compose up -d
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
 - [x] Use AVAILABLE_WHISPER_LANGS & AVAILABLE_LT_LANGS to verify frontend requests
-- [ ] Endpoint to fetch human readable transcript for room (join all partial transcripts, with date timestamp)
+- [x] Endpoint to fetch human readable transcript for room (join all partial transcripts, with date timestamp)
   - [x] Provide endpoint
-  - [ ] Join all partial transcripts
-  - [ ] Load from memory or from disk if thats not available
-  - [ ] Endpoint to provide list of all room id's that have transcripts stored to disk (and in which langs)
+  - [x] Join all partial transcripts
+  - [x] Load from memory or from disk if thats not available
+  - [x] Endpoint to provide list of all room id's that have transcripts stored to disk
+    - Available as [transcript info](#transcript-infos) at [/transcript_list](#endpoints)
 - [ ] (Pause fetch loop when connected host is not streaming?)
 - [x] Respect whisper instance limit when activating rooms
 - [x] Whisper `device, compute_type` passthrough to cli from custom WhisperLiveKit fork
@@ -197,7 +216,7 @@ docker compose up -d
   - Docker compose is set up in `stats/umami`
   - whisperlivekit/whisper_streaming_custom/online_asr.py - line 231
   - Reset if delay greater than 20s?
-- [ ] Fix country coding in [transcription chunks](#transcript-chunk)
+- [x] Fix country coding in [transcription chunks](#transcript-chunk)
   - No longer provide default sentence, instead make `sentence` field a dict of country codes
 - [x] Move whisper engine to seperate process
 - [x] Proper target langs subscribe/unsubscribe
