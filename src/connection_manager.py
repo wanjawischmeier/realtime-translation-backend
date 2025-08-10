@@ -71,6 +71,9 @@ class ConnectionManager:
                         await self._host_signal_recieved(signal)
                     else:
                         LOGGER.warning(f'Recieved unknown json object in room <{self._room_id}>')
+                elif 'type' in data:
+                    if data['type'] == 'websocket.disconnect':
+                        raise WebSocketDisconnect(data['code'], data['reason'])
                 else:
                     LOGGER.warning(f'Recieved data in unknown format from host of room <{self._room_id}>:\n{data}')
         except WebSocketDisconnect:
@@ -79,6 +82,8 @@ class ConnectionManager:
             self._host = None
             if target_lang:
                 self.translation_worker.unsubscribe_target_lang(target_lang)
+        except RuntimeError as error:
+            LOGGER.warning(f'Runtime errror whilst listening to host in room <{self._room_id}>:\n{error}')
         
     async def connect_client(self, client: WebSocket, target_lang: str):
         self._clients.append(client)

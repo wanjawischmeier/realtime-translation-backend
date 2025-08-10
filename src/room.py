@@ -88,7 +88,7 @@ class Room:
         self.translation_worker.stop()
         await self._room_process.stop()
 
-    async def defer_deactivation(self, on_deactivate: Callable[[None], None], deactivation_delay: float=300):
+    def defer_deactivation(self, on_deactivate: Callable[[None], None], deactivation_delay: float=300):
         # Cancel any existing deactivation task
         if self._deactivation_task:
             self._deactivation_task.cancel()

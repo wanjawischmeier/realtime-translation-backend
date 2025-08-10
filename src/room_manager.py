@@ -81,7 +81,7 @@ class RoomManager:
         def on_deactivate():
             self._active_room_count = max(0, self._active_room_count - 1)
         
-        await room.defer_deactivation(
+        room.defer_deactivation(
             on_deactivate, deactivation_delay=10 # TODO: revert to 300s (5m) for production
         )
 
