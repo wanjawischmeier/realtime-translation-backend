@@ -93,19 +93,24 @@ endpoints:
       "sentences": [
         {
           "sent_idx": 0,
-          "sentence_de": "",
-          "sentence_en": "",
+          "content": {
+            "en": "",
+            "de": "",
+          }
         },
         {
           "sent_idx": 1,
-          "sentence_de": "",
-          # Not all sentences will be available in the same languages
-          # As translation happens asynchronously
+          "content": {
+            "en": "",
+            # NOTE: Not all sentences will be available in the same languages, as translation happens asynchronously
+          }
         },
         {
           "sent_idx": 2,
-          "sentence_de": "",
-          "sentence_en": "",
+          "content": {
+            "en": "",
+            "de": "",
+          }
         }
       ]
     }
@@ -168,6 +173,7 @@ docker compose up -d
 - [x] Eine Restart-Option für Räume im Frontend implementieren
 - [ ] Websocket connects/disconnects handlen und Bugs fixen
   - [x] Unique host id
+  - [ ] Client disconnects dont get recognized correctly
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
@@ -175,6 +181,8 @@ docker compose up -d
 - [ ] Endpoint to fetch human readable transcript for room (join all partial transcripts, with date timestamp)
   - [x] Provide endpoint
   - [ ] Join all partial transcripts
+  - [ ] Load from memory or from disk if thats not available
+  - [ ] Endpoint to provide list of all room id's that have transcripts stored to disk (and in which langs)
 - [ ] (Pause fetch loop when connected host is not streaming?)
 - [x] Respect whisper instance limit when activating rooms
 - [x] Whisper `device, compute_type` passthrough to cli from custom WhisperLiveKit fork
@@ -187,7 +195,6 @@ docker compose up -d
   - Docker compose is set up in `stats/beszel`
 - [x] Umami stats
   - Docker compose is set up in `stats/umami`
-- [ ] Prevent freeze (`No ASR output for 105.42s. Resetting buffer to prevent freezing.` not working)
   - whisperlivekit/whisper_streaming_custom/online_asr.py - line 231
   - Reset if delay greater than 20s?
 - [ ] Fix country coding in [transcription chunks](#transcript-chunk)
@@ -197,3 +204,4 @@ docker compose up -d
   - [x] Prevent doubling of target langs
   - [x] Ignore target langs that are equal to source lang (don't add to list)
 - [x] Send initial transcript chunk on client connection
+- [ ] Move transcript loggers to seperate file

@@ -46,7 +46,7 @@ class Room:
             data['source_lang'] = self.transcription_manager.source_lang
         return data
     
-    async def activate(self, source_lang: str, target_langs: dict[str, int], connection_manager: ConnectionManager=None):
+    async def activate(self, source_lang: str, target_langs: dict[str, int]={}, connection_manager: ConnectionManager=None, target_lang: str=None):
         LOGGER.info(f'Activating room <{self.id}>')
         self.active = True
         if self._deactivation_task:
@@ -55,7 +55,11 @@ class Room:
 
         self.transcription_manager = TranscriptionManager(source_lang, room_id=self.id)
         self._room_process = RoomProcess(self.id, source_lang)
-        self.translation_worker = TranslationWorker(self.transcription_manager, target_langs=target_langs)
+        self.translation_worker = TranslationWorker(
+            self.transcription_manager,
+            target_langs=target_langs,
+            target_lang=target_lang
+        )
         self.translation_worker.start()
         
         if connection_manager:
