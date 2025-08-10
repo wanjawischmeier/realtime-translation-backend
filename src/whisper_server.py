@@ -1,11 +1,9 @@
-import asyncio
 import subprocess
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
-from whisperlivekit import get_web_interface_html
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
 from io_config.logger import LOGGER
@@ -46,10 +44,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.get("/") # TODO: remove dev frontend in production
-async def get_dev_frontend():
-    return HTMLResponse(get_web_interface_html())
 
 @app.get("/health")
 async def health():
@@ -106,14 +100,6 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         await room_manager.activate_room_as_host(websocket, room_id, source_lang, target_lang)
     else:   # role == 'client'
         await room_manager.join_room_as_client(websocket, room_id, target_lang)
-
-@app.websocket("/asr")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-
-    room_id = 'dev_room_id'
-    source_lang = 'de'
-    await room_manager.activate_room_as_host(websocket, room_id, source_lang)
 
 if __name__ == "__main__":
     import uvicorn

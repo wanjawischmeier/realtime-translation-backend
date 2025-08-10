@@ -53,7 +53,7 @@ class Room:
             self._deactivation_task.cancel() # Cancel room deactivation
             self._deactivation_task = None
 
-        self.transcription_manager = TranscriptionManager(source_lang, room_id=self.id)
+        self.transcription_manager = TranscriptionManager(self.id, source_lang)
         self._room_process = RoomProcess(self.id, source_lang)
         self.translation_worker = TranslationWorker(
             self.transcription_manager,

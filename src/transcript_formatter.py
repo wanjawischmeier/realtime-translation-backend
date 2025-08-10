@@ -79,6 +79,16 @@ def get_transcript_from_lines(lines: list[dict[str, Any]], lang: str) -> str:
         """Generate a human readable transcript string in the desired language."""
         lines_output = []
         for line in lines:
+            # Only include sentences where target lang available (non-empty)
+            text = " ".join(
+                sentence['content'][lang]
+                for sentence in line.get('sentences', [])
+                if sentence['content'].get(lang)
+            )
+            
+            if not text:
+                continue
+            
             # Format begin and end time
             beg_formatted = format_time(line['beg'])
             end_formatted = format_time(line['end'])
@@ -88,13 +98,6 @@ def get_transcript_from_lines(lines: list[dict[str, Any]], lang: str) -> str:
             speaker_label = ""
             if line.get("speaker", -1) != -1:
                 speaker_label = f"{line['speaker']}: "
-            
-            # Only include sentences where target lang available (non-empty)
-            text = " ".join(
-                sentence['content'][lang]
-                for sentence in line.get('sentences', [])
-                if sentence['content'].get(lang)
-            )
             
             # Combine everything for the line
             lines_output.append(f"[{speaker_label}{time_range}]\n{text}")

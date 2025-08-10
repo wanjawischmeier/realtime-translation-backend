@@ -39,8 +39,7 @@ punkt_language_map = {
 
 
 class TranscriptionManager:
-    def __init__(self, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs",
-                 room_id="default_room", compare_depth=10, num_sentences_to_broadcast=20):
+    def __init__(self, room_id, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs", compare_depth=10, num_sentences_to_broadcast=20):
         
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
