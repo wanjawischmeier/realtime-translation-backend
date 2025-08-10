@@ -10,14 +10,16 @@ from transcription_manager import TranscriptionManager
 
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0, target_langs: dict[str, int]={}):
+    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0, target_langs: dict[str, int]={}, target_lang: str=None):
         super().__init__()
-        self.target_langs = target_langs
         self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
         self.poll_interval = poll_interval
         self.daemon = True
         self._transcription_manager: TranscriptionManager = transcription_manager
         self._stop_event = threading.Event()
+        self.target_langs = target_langs
+        if target_lang:
+            self.subscribe_target_lang(target_lang)
     
     def subscribe_target_lang(self, target_lang: str):
         """Increment count for subscription to a target language."""
@@ -43,34 +45,32 @@ class TranslationWorker(threading.Thread):
     def run(self):
         while not self._stop_event.is_set():
             cycle_start = time.time()
-            try:
-                # Check translation queue of transcription manager
-                to_translate = self._transcription_manager.poll_sentences_to_translate()
+            
+            # Check translation queue of transcription manager
+            to_translate = self._transcription_manager.poll_sentences_to_translate()
 
-                for target_lang in self.target_langs.keys():
-                    translation_results = []
-                    for entry in to_translate:
-                        if target_lang in entry['translated_langs']:
-                            continue
-                        sentence = entry['sentence']
-                        try:
-                            translation = self.lt.translate(sentence, source=self._transcription_manager.source_lang, target=target_lang)
-                        except RequestException as e:
-                            LOGGER.error(f"Translation error for '{sentence}' to '{target_lang}': {e}")
-                            continue
-                        translation_results.append({
-                            'line_idx': entry['line_idx'],
-                            'sent_idx': entry['sent_idx'],
-                            'sentence': sentence,
-                            'lang': target_lang,
-                            'translation': translation
-                        })
-                    if translation_results:
-                        translation_time = time.time() - cycle_start
-                        self._transcription_manager.submit_translation(translation_results, translation_time)
-                        LOGGER.info(f"Submitted {len(translation_results)} translations to '{target_lang}' in {translation_time:.2f}s.")
-            except Exception as e: # TODO: Remove this try/catch? I feel like its not necessary, cause the only possible error is already caught in RequestException
-                LOGGER.error(f"Error in translation cycle: {e}")
+            for target_lang in self.target_langs.keys():
+                translation_results = []
+                for entry in to_translate:
+                    if target_lang in entry['translated_langs']:
+                        continue
+                    sentence = entry['sentence']
+                    try:
+                        translation = self.lt.translate(sentence, source=self._transcription_manager.source_lang, target=target_lang)
+                    except RequestException as e:
+                        LOGGER.error(f"Translation error for '{sentence}' to '{target_lang}': {e}")
+                        continue
+                    translation_results.append({
+                        'line_idx': entry['line_idx'],
+                        'sent_idx': entry['sent_idx'],
+                        'sentence': sentence,
+                        'lang': target_lang,
+                        'translation': translation
+                    })
+                if translation_results:
+                    translation_time = time.time() - cycle_start
+                    self._transcription_manager.submit_translation(translation_results, translation_time)
+                    LOGGER.info(f"Submitted {len(translation_results)} translations to '{target_lang}' in {translation_time:.2f}s.")
 
             elapsed = time.time() - cycle_start
             sleep_time = self.poll_interval - elapsed

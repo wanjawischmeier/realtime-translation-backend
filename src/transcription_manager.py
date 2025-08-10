@@ -143,20 +143,24 @@ class TranscriptionManager:
                             for j in range(min_len):
                                 old_sentence_obj = old_sentences[j]
                                 new_sentence_text = new_sentences_raw[j]
-                                if old_sentence_obj['sentence'] == new_sentence_text:
+                                if old_sentence_obj['content'][self.source_lang] == new_sentence_text:
                                     # Sentence unchanged: keep all translations
                                     new_sentences.append(old_sentence_obj)
                                 else:
                                     # Sentence changed: reset translations
                                     new_sentences.append({
                                         'sent_idx': len(new_sentences),
-                                        'sentence': new_sentence_text
+                                        'content': {
+                                            self.source_lang: new_sentence_text
+                                        }
                                     })
                             # Step 2: Handle added sentences
                             for j in range(min_len, len(new_sentences_raw)):
                                 new_sentences.append({
                                     'sent_idx': len(new_sentences),
-                                    'sentence': new_sentences_raw[j]
+                                    'content': {
+                                        self.source_lang: new_sentences_raw[j]
+                                    }
                                 })
 
                             # Update the line
@@ -170,16 +174,22 @@ class TranscriptionManager:
                             })
 
                             # Update _to_translate for each sentence
-                            for sent in new_sentences:
-                                self._add_to_translation_queue(line_idx, sent['sent_idx'], sent['sentence'])
+                            for sentence in new_sentences:
+                                self._add_to_translation_queue(
+                                    line_idx,
+                                    sentence['sent_idx'],
+                                    sentence['content'][self.source_lang]
+                                )
                             updated = True
                 else:
                     # New line
                     new_sentences = []
-                    for i, sent in enumerate(new_sentences_raw):
+                    for i, sentence in enumerate(new_sentences_raw):
                         new_sentences.append({
                             'sent_idx': i,
-                            'sentence': sent
+                            'content': {
+                                self.source_lang: sentence
+                            }
                         })
                     new_line = {
                         'line_idx': len(self._lines),
@@ -190,8 +200,12 @@ class TranscriptionManager:
                         'sentences': new_sentences
                     }
                     self._lines.append(new_line)
-                    for sent in new_sentences:
-                        self._add_to_translation_queue(len(self._lines) - 1, sent['sent_idx'], sent['sentence'])
+                    for sentence in new_sentences:
+                        self._add_to_translation_queue(
+                            len(self._lines) - 1,
+                            sentence['sent_idx'],
+                            sentence['content'][self.source_lang]
+                        )
                     updated = True
 
             if updated: # only push if changes occured
@@ -221,10 +235,10 @@ class TranscriptionManager:
                 try:
                     line = self._lines[line_idx]
                     sent_obj = line['sentences'][sent_idx]
-                    current_sentence = sent_obj['sentence']
+                    current_sentence = sent_obj['content'][self.source_lang]
                     if current_sentence == orig_sentence:
-                        # Store translation as 'sentence_{lang}'
-                        sent_obj[f'sentence_{lang}'] = translation
+                        # Store translation as 'content: {lang: "..."}'
+                        sent_obj['content'][lang] = translation
                         # Update _to_translate entry for this sentence
                         for entry in self._to_translate:
                             if (entry['line_idx'] == line_idx and
@@ -287,26 +301,6 @@ class TranscriptionManager:
         with self.lock:
             # Return the list as-is
             return self._to_translate
-
-    def get_full_transcript(self, lang=None):
-        sents = []
-        for line in self._lines:
-            for sent in line['sentences']:
-                if lang and f'sentence_{lang}' in sent:
-                    sents.append(sent[f'sentence_{lang}'])
-                else:
-                    sents.append(sent['sentence'])
-        return " ".join(sents) + " " + self._buffer_transcription
-
-    def get_sentences(self, lang=None):
-        sents = []
-        for line in self._lines:
-            for sent in line['sentences']:
-                if lang and f'sentence_{lang}' in sent:
-                    sents.append(sent[f'sentence_{lang}'])
-                else:
-                    sents.append(sent['sentence'])
-        return sents
     
     def get_last_n_lines(self, n: int=None, include_raw_string=False):
         if not n:   # default to using configured number of lines
@@ -392,13 +386,13 @@ class TranscriptionManager:
             # Assemble text sentences depending on lang
             if lang == self.source_lang:
                 # Use original sentences unconditionally
-                text = " ".join(sentence['sentence'] for sentence in line.get('sentences', []))
+                text = " ".join(sentence['content'][lang] for sentence in line.get('sentences', []))
             else:
                 # Only include translated sentences where available (non-empty)
                 text = " ".join(
-                    sentence[f"sentence_{lang}"]
+                    sentence[lang]
                     for sentence in line.get('sentences', [])
-                    if sentence.get(f"sentence_{lang}")
+                    if sentence.get(lang)
                 )
             
             # Combine everything for the line
@@ -444,22 +438,11 @@ class TranscriptionManager:
                         f"speaker: {line.get('speaker')}"
                     )
                     f.write(line_info + "\n")
-                    for sent_idx, sent in enumerate(line['sentences']):
-                        # Collect translations (sorted by lang code)
-                        translations = []
-                        for k in sorted(sent.keys()):
-                            if k.startswith('sentence_') and k != 'sentence':
-                                lang_code = k[len('sentence_'):]
-                                translations.append((lang_code, sent[k]))
+                    for sent_idx, sentence in enumerate(line['sentences']):
                         # Write original sentence and translations
-                        if translations:
-                            f.write(f"\tSENT {sent_idx}:\n")
-                            f.write(f"\t\torig: {repr(sent['sentence'])}\n")
-                            for lang_code, text in translations:
-                                f.write(f"\t\t{lang_code}: {repr(text)}\n")
-                        else:
-                            # Only original sentence present, print on one line
-                            f.write(f"\tSENT {sent_idx}: {repr(sent['sentence'])}\n")
+                        f.write(f"\tSENT {sent_idx}:\n")
+                        for lang_code in sentence['content']:
+                            f.write(f"\t\t{lang_code}: {sentence['content'][lang_code]}\n")
 
                 # Log incomplete sentence if present
                 if hasattr(self, 'incomplete_sentence') and self._incomplete_sentence:

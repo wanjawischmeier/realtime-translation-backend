@@ -64,6 +64,9 @@ class ConnectionManager:
 
         try:
             while True:
+                if not host:
+                    return # Websocket disconnected
+                
                 data = await host.receive()
                 if "bytes" in data:
                     audio_bytes = data["bytes"]
