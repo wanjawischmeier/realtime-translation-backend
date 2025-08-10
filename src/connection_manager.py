@@ -39,8 +39,10 @@ class ConnectionManager:
             self._handle_whisper_generator()
         )
         self._transcript_generator_handler_task = asyncio.create_task(
-            self._handle_transcript_generator(self._transcription_manager.transcript_generator()) # TODO: pass generator directly
+            self._handle_transcript_generator(self._transcription_manager.transcript_generator())
         )
+        
+        await self._host.send_json(self._transcription_manager.last_transcript_chunk) # Inital transcript chunk
         LOGGER.info(f'Host connected in room <{self._room_id}>, listening...')
 
         try:
@@ -66,11 +68,19 @@ class ConnectionManager:
             self._translation_worker.unsibscribe_target_lang(target_lang)
             LOGGER.info(f'Client {len(self._clients) + 1} disconnected in room <{self._room_id}>') # TODO: fix recognition of client detection
     
+    async def ready_to_recieve_audio(self):
+        """
+        To be called once audio_chunk_recieved is ready to recieve audio chunks 
+        """
+        await self._host.send_json({
+            'status': 'ready_to_recieve_audio'
+        })
+    
     async def _handle_whisper_generator(self):
         while True:
-            transcript = await self._transcript_chunk_provider()
-            # print(f'Result for room <{self._room_id}>: {transcript}')
-            self._transcript_chunk_recieved(transcript)
+            chunk = await self._transcript_chunk_provider()
+            if chunk: # Might be None if chunk contained sentinel value
+                self._transcript_chunk_recieved(chunk)
     
     async def _handle_transcript_generator(self, transcript_generator):
         async for transcript in transcript_generator:

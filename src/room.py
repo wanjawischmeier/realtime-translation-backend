@@ -51,10 +51,7 @@ class Room:
         self.transcription_manager = TranscriptionManager(source_lang, room_id=self.id)
         self.transcription_manager.transcript_generator()
         
-        # Start the RoomProcess (subprocess)
         self._room_process = RoomProcess(self.id, source_lang)
-        self._room_process.start()
-        
         self.translation_worker = TranslationWorker(self.transcription_manager, target_langs=target_langs)
         self.translation_worker.start()
         
@@ -68,6 +65,9 @@ class Room:
                 transcript_chunk_provider=self._room_process.get_transcript_chunk,
                 restart_request_recieved=self.restart_engine
             )
+        
+        # Start the room subprocess (needs connection manager to be initialized)
+        self._room_process.start(self.connection_manager.ready_to_recieve_audio)
     
     async def deactivate(self) -> bool:
         if not self.active:

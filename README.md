@@ -42,6 +42,7 @@ endpoints:
     - `room_id`: unique room identifier
     - `role`: Can be `host` or `client`
     - `source_lang`/`target_lang`: The respective country codes, e.g. `de`, `en`
+`en`
 
 # Data structures
 ## Room list
@@ -163,6 +164,7 @@ docker compose up -d
   - [x] Ein Raum wird geschlossen, wenn der host rausgegangen ist (+ 5 minpuffer, sodass Host neu reingehen kann falls mensch nur kurz rausfliegt)
   - [x] Wenn sich die Host-Sprache ändert (erfordert neustart der engine),soll der host aus dem raum rausgehen und mit der neuen Sprache neu reingehen
   - [x] Wenn der host einem bereits offenen raum mit geänderten parametern joint, wird der raum vom room manager neu gestartet
+  - [x] Send "ready" packet
 - [ ] Eine Restart-Option für Räume im Frontend implementieren
 - [ ] Websocket connects/disconnects handlen und Bugs fixen
 - [x] Raumliste an frontend schicken (Endpoint)
@@ -193,3 +195,4 @@ docker compose up -d
 - [x] Proper target langs subscribe/unsubscribe
   - [x] Prevent doubling of target langs
   - [x] Ignore target langs that are equal to source lang (don't add to list)
+- [x] Send initial transcript chunk on client connection

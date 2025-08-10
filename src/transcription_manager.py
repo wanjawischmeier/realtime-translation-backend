@@ -60,6 +60,12 @@ class TranscriptionManager:
         self.source_lang = source_lang
         self._punkt_lang = punkt_language_map.get(source_lang)
         self._num_sentences_to_broadcast = num_sentences_to_broadcast
+        self.last_transcript_chunk = {
+            'last_n_sents': [],
+            'incomplete_sentence': '',
+            'transcription_delay': 0,
+            'translation_delay': 0
+        }
         self._queue = asyncio.Queue()
 
         self.rolling_transcription_delay = RollingAverage(n=4)
@@ -254,14 +260,15 @@ class TranscriptionManager:
     def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
         last_n_sents = self.get_last_n_sentences()
+        self.last_transcript_chunk = {
+            'last_n_sents': last_n_sents,
+            'incomplete_sentence': self._incomplete_sentence,
+            'transcription_delay': self.rolling_transcription_delay.get_average(),
+            'translation_delay': self.rolling_translation_delay.get_average()
+        }
         if broadcast and (last_n_sents or self._incomplete_sentence):
             # Put the new result in the async queue
-            self._queue.put_nowait({
-                'last_n_sents': last_n_sents,
-                'incomplete_sentence': self._incomplete_sentence,
-                'transcription_delay': self.rolling_transcription_delay.get_average(),
-                'translation_delay': self.rolling_translation_delay.get_average()
-            })
+            self._queue.put_nowait(self.last_transcript_chunk)
 
         # logging for debugging
         if LOG_TRANSCRIPTS:
