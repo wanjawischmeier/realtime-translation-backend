@@ -189,9 +189,10 @@ docker compose up -d
   - [x] Wenn der host einem bereits offenen raum mit geänderten parametern joint, wird der raum vom room manager neu gestartet
   - [x] Send "ready" packet
 - [x] Eine Restart-Option für Räume im Frontend implementieren
-- [ ] Websocket connects/disconnects handlen und Bugs fixen
+- [x] Websocket connects/disconnects handlen und Bugs fixen
   - [x] Unique host id
-  - [ ] Client disconnects dont get recognized correctly
+  - [x] Client disconnects dont get recognized correctly
+  - [ ] Rooms get prematurely closed upon host reconnects
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
@@ -223,3 +224,5 @@ docker compose up -d
   - [x] Ignore target langs that are equal to source lang (don't add to list)
 - [x] Send initial transcript chunk on client connection
 - [x] Move transcript and room system to seperate files in dedicated dirs
+- [ ] Pace translation worker
+  - As of now will just work through all sentences in one loop if a new language gets subscribed to

@@ -98,13 +98,14 @@ class ConnectionManager:
         
     async def connect_client(self, client: WebSocket, target_lang: str):
         self._clients.append(client)
+        await client.send_json(self.transcription_manager.last_transcript_chunk) # Inital transcript chunk
+        LOGGER.info(f'Client {len(self._clients)} connected to room <{self._room_id}>')
         self.translation_worker.subscribe_target_lang(target_lang)
-        LOGGER.info(f'Client {len(self._clients)} connected in room <{self._room_id}>')
 
         try:
             while True:
-                await asyncio.sleep(1)  # Just keep the connection alive TODO: check if neccessary
-        except WebSocketDisconnect:
+                await client.receive() # Just to check connection, not actually expecting data
+        except (WebSocketDisconnect, RuntimeError):
             self._clients.remove(client)
             self.translation_worker.unsubscribe_target_lang(target_lang)
             LOGGER.info(f'Client {len(self._clients) + 1} disconnected in room <{self._room_id}>') # TODO: fix recognition of client detection
