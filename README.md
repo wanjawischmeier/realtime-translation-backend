@@ -202,6 +202,7 @@ docker compose up -d
   - [x] Load from memory or from disk if thats not available
   - [x] Endpoint to provide list of all room id's that have transcripts stored to disk
     - Available as [transcript info](#transcript-infos) at [/transcript_list](#endpoints)
+    - [ ] Also store and provide room metadata alongside
 - [ ] (Pause fetch loop when connected host is not streaming?)
 - [x] Respect whisper instance limit when activating rooms
 - [x] Whisper `device, compute_type` passthrough to cli from custom WhisperLiveKit fork
