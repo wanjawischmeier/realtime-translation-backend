@@ -1,10 +1,9 @@
+# Note: This file is not maintained and propably does not work as of now
 services:
   whisper-server:
     build: .
     ports:
       - "8000:8000"
-      - "5000:5000"
-      - "5000:5000"
     volumes:
       - ./src:/app/src:z  # Mount src for live code updates
     command: >
