@@ -3,7 +3,7 @@ from multiprocessing import Process
 from typing import Awaitable, Callable
 from aioprocessing import AioQueue
 from io_config.logger import LOGGER
-from room_worker import room_worker, READY_SIGNAL, STOP_SIGNAL
+from room_system.room_worker import room_worker, READY_SIGNAL, STOP_SIGNAL
 
 from io_config.cli import MODEL, DEVICE, COMPUTE_TYPE, DIARIZATION, VAC, BUFFER_TRIMMING, MIN_CHUNK_SIZE, VAC_CHUNK_SIZE
 

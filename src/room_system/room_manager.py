@@ -2,7 +2,7 @@ import asyncio
 from fastapi import WebSocket
 
 from pretalx_api_wrapper import PretalxAPI
-from room import Room
+from room_system.room import Room
 from io_config.config import AVAILABLE_WHISPER_LANGS, CLOSE_ROOM_AFTER_SECONDS, MAX_WHISPER_INSTANCES, AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
 

@@ -223,4 +223,4 @@ docker compose up -d
   - [x] Prevent doubling of target langs
   - [x] Ignore target langs that are equal to source lang (don't add to list)
 - [x] Send initial transcript chunk on client connection
-- [ ] Move transcript loggers to seperate file
+- [x] Move transcript and room system to seperate files in dedicated dirs
