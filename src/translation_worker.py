@@ -6,7 +6,7 @@ from requests import RequestException
 
 from io_config.config import LT_HOST, LT_PORT
 from io_config.logger import LOGGER
-from transcription_manager import TranscriptionManager
+from transcription_system.transcription_manager import TranscriptionManager
 
 
 class TranslationWorker(threading.Thread):

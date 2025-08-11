@@ -7,8 +7,8 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
 from io_config.logger import LOGGER
-from room_manager import room_manager
-from transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
+from room_system.room_manager import room_manager
+from transcription_system.transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
 
 server_ready = False
 

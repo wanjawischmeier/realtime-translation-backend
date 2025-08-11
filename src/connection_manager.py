@@ -6,7 +6,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from flask import json
 
 from io_config.logger import LOGGER
-from transcription_manager import TranscriptionManager
+from transcription_system.transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
 
 

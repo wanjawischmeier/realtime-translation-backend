@@ -1,41 +1,16 @@
 import asyncio
-import json
 import os
 import pickle
 import threading
 from datetime import datetime
 
-# Initialize tokenizer
-import nltk
-
 from io_config.cli import LOG_TRANSCRIPTS
 from io_config.logger import LOGGER
 from rolling_average import RollingAverage
+from transcription_system.transcription_helper import filter_complete_sentences, get_last_n_sentences, time_str_to_seconds
+from transcription_system.transcription_logger import log_transcript_to_file, log_to_translate
+from transcription_system.sentence_tokenizer import punkt_language_map, sent_tokenize
 
-nltk.download('punkt')
-nltk.download('punkt_tab')
-from nltk.tokenize import sent_tokenize
-
-punkt_language_map = {
-    'cs': 'czech',
-    'da': 'danish',
-    'nl': 'dutch',
-    'en': 'english',
-    'et': 'estonian',
-    'fi': 'finnish',
-    'fr': 'french',
-    'de': 'german',
-    'el': 'greek',
-    'it': 'italian',
-    'no': 'norwegian',
-    'pl': 'polish',
-    'pt': 'portuguese',
-    'ru': 'russian',
-    'sl': 'slovene',
-    'es': 'spanish',
-    'sv': 'swedish',
-    'tr': 'turkish'
-}
 
 
 class TranscriptionManager:
@@ -77,27 +52,7 @@ class TranscriptionManager:
 
         self.lock = threading.Lock()
 
-    def _time_str_to_seconds(self, time_str):
-        try:
-            parts = list(map(int, time_str.split(':')))
-            if len(parts) == 3:
-                hours, minutes, seconds = parts
-                return hours * 3600 + minutes * 60 + seconds
-        except TypeError as e:
-            LOGGER.error(f"Error parsing time string '{time_str}': {e}")
-            return 0
     
-    def _filter_complete_sentences(self, sentences) -> tuple[list[str], str]:
-        """
-        Returns a tuple:
-        (list_of_complete_sentences, incomplete_sentence)
-        """
-        if not sentences:
-            return [], ""
-        last = sentences[-1].strip()
-        if last and last[-1] not in ".!?":
-            return sentences[:-1], last
-        return sentences, ""
 
     def submit_chunk(self, chunk):
         with self.lock:
@@ -108,19 +63,20 @@ class TranscriptionManager:
             self.rolling_transcription_delay.add(chunk['remaining_time_transcription'])
 
             for i, line in enumerate(incoming_lines):
-                beg = self._time_str_to_seconds(line['beg'])
-                end = self._time_str_to_seconds(line['end'])
+                beg = time_str_to_seconds(line['beg'])
+                end = time_str_to_seconds(line['end'])
                 text = line.get('text', '').strip()
                 speaker = line.get('speaker', None)
                 if text == '': continue
 
                 # Split into sentences
                 new_sentences_raw = sent_tokenize(text, language=self._punkt_lang)
-                new_sentences_raw, incomplete_sentence = self._filter_complete_sentences(new_sentences_raw)
+                new_sentences_raw, incomplete_sentence = filter_complete_sentences(new_sentences_raw)
                 if i == len(incoming_lines) - 1 and incomplete_sentence != self._incomplete_sentence:
                     self._incomplete_sentence = incomplete_sentence
                     updated = True
 
+                # TODO: Move parsing logic into sepeperate function
                 line_idx = len(self._lines) - len(incoming_lines) + i
                 if 0 <= line_idx < len(self._lines):
                     if line_idx >= len(self._lines) - self.compare_depth:
@@ -265,7 +221,7 @@ class TranscriptionManager:
     
     def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
-        last_n_sents = self.get_last_n_sentences()
+        last_n_sents = get_last_n_sentences(self._lines, self._num_sentences_to_broadcast)
         self.last_transcript_chunk = {
             'last_n_sents': last_n_sents,
             'incomplete_sentence': self._incomplete_sentence,
@@ -278,8 +234,14 @@ class TranscriptionManager:
 
         # logging for debugging
         if LOG_TRANSCRIPTS:
-            self._log_transcript_to_file()
-            self._log_to_translate()
+            log_transcript_to_file(
+                self._lines,
+                self._incomplete_sentence,
+                self._buffer_transcription,
+                self.log_directory,
+                self.log_path
+            )
+            log_to_translate(self._to_translate, self.log_path)
 
         # write changes to disk
         with open(self._transcript_db_path, 'wb') as pkl_file:
@@ -289,67 +251,6 @@ class TranscriptionManager:
         with self.lock:
             # Return the list as-is
             return self._to_translate
-    
-    def get_last_n_lines(self, n: int=None, include_raw_string=False):
-        if not n:   # default to using configured number of lines
-            n = self._num_lines_to_broadcast
-        
-        lines: list[dict[str, any]] = self._lines[-n:]
-        
-        if not include_raw_string:
-            # Create copies of each dict without the 'text' entry
-            lines = [
-                {k: v for k, v in line.items() if k != 'text'}
-                for line in lines
-            ]
-
-        return lines
-
-    def get_last_n_sentences(self, n: int = None, include_raw_string=False):
-        if not n: # # default to using configured number of sentences
-            n = self._num_sentences_to_broadcast
-        
-        remaining = n
-        result_lines = []
-        
-        # Process lines in reverse order to gather sentences from the end
-        for line in reversed(self._lines):
-            sentences = line.get('sentences', [])
-            if not sentences:
-                continue
-            
-            # Take sentences from the end of this line up to 'remaining'
-            take_count = min(len(sentences), remaining)
-            
-            # Sentences to include from this line (take from the end)
-            selected_sentences = sentences[-take_count:]
-            
-            # Construct a new line dictionary to preserve structure
-            new_line = {
-                k: v for k, v in line.items() if k != 'sentences' and (include_raw_string or k != 'text')
-            }
-            
-            if include_raw_string:
-                new_line['text'] = line.get('text', '')
-            
-            new_line['sentences'] = selected_sentences
-            
-            result_lines.append(new_line)
-            
-            remaining -= take_count
-            if remaining <= 0:
-                break
-        
-        # We collected lines in reverse order, reverse back for normal reading order
-        result_lines.reverse()
-        
-        return result_lines
-
-    def get_stats(self) -> dict:
-        return {
-            'transcription_delay': self.rolling_transcription_delay.get_average(),
-            'translation_delay': self.rolling_translation_delay.get_average()
-        }
 
     def _add_to_translation_queue(self, line_idx, sent_idx, sentence):
         # Find existing entry for this (line_idx, sent_idx)
@@ -371,50 +272,3 @@ class TranscriptionManager:
             'sentence': sentence,
             'translated_langs': set()
         })
-
-    def _log_transcript_to_file(self):
-        with open(f'{self.log_directory}/n_lines_dump.json', 'w', encoding="utf-8") as f:
-            f.write(json.dumps({
-                'last_lines': self.get_last_n_lines(3),
-                'incomplete_sentence': self._incomplete_sentence,
-                'buffer_transcription': self._buffer_transcription
-            }))
-
-        try:
-            with open(self.log_path, "w", encoding="utf-8") as f:
-                for line_idx, line in enumerate(self._lines):
-                    line_info = (
-                        f"LINE {line_idx} | beg: {line.get('beg')} | end: {line.get('end')} | "
-                        f"speaker: {line.get('speaker')}"
-                    )
-                    f.write(line_info + "\n")
-                    for sent_idx, sentence in enumerate(line['sentences']):
-                        # Write original sentence and translations
-                        f.write(f"\tSENT {sent_idx}:\n")
-                        for lang_code in sentence['content']:
-                            f.write(f"\t\t{lang_code}: {sentence['content'][lang_code]}\n")
-
-                # Log incomplete sentence if present
-                if hasattr(self, 'incomplete_sentence') and self._incomplete_sentence:
-                    f.write(f"INCOMPLETE SENT: {self._incomplete_sentence}\n")
-                # Log buffer transcription if present
-                if self._buffer_transcription:
-                    f.write(f"BUFFER: {self._buffer_transcription}\n")
-            LOGGER.debug("Transcript updated and logged to file.")
-        except FileNotFoundError as e:
-            LOGGER.error(f"Failed to write transcript to {self.log_path}: {e}")
-    
-    def _log_to_translate(self):
-        try:
-            # Prepare a JSON-serializable version
-            serializable = []
-            for entry in self._to_translate:
-                # Copy entry and convert set to list
-                entry_copy = dict(entry)
-                entry_copy['translated_langs'] = list(entry_copy['translated_langs'])
-                serializable.append(entry_copy)
-
-            with open(self.log_path, "w", encoding="utf-8") as f:
-                json.dump(serializable, f, ensure_ascii=False, indent=2)
-        except FileNotFoundError as e:
-            LOGGER.error(f"Failed to write to logs/to_translate.txt: {e}")

@@ -2,9 +2,9 @@ import asyncio
 from typing import Callable
 
 from connection_manager import ConnectionManager
-from transcription_manager import TranscriptionManager
+from transcription_system.transcription_manager import TranscriptionManager
 from translation_worker import TranslationWorker
-from room_process import RoomProcess
+from room_system.room_process import RoomProcess
 from io_config.logger import LOGGER
 
 class Room:
