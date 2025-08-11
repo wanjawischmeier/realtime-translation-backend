@@ -214,10 +214,8 @@ docker compose up -d
   - Docker compose is set up in `stats/beszel`
 - [x] Umami stats
   - Docker compose is set up in `stats/umami`
-  - whisperlivekit/whisper_streaming_custom/online_asr.py - line 231
-  - Reset if delay greater than 20s?
 - [x] Fix country coding in [transcription chunks](#transcript-chunk)
-  - No longer provide default sentence, instead make `sentence` field a dict of country codes
+  - No longer provide default sentence, instead make a sentences `content` field a dict of country codes
 - [x] Move whisper engine to seperate process
 - [x] Proper target langs subscribe/unsubscribe
   - [x] Prevent doubling of target langs
