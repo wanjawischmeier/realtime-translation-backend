@@ -72,7 +72,6 @@ class RoomManager:
             self._active_room_count += 1
             await room.activate(source_lang, target_lang=target_lang)
 
-        # TODO: send 'now listening' to frontend
         LOGGER.info(f'Attempting to start listening for host in room <{room_id}>...')
         await room.connection_manager.listen_to_host(host, target_lang)
 

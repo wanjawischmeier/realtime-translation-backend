@@ -13,5 +13,5 @@ class RollingAverage:
 
     def get_average(self):
         if not self.window:
-            return 0  # or raise an exception if preferred
+            return 0
         return self.running_sum / len(self.window)
