@@ -29,7 +29,7 @@ class TranslationWorker(threading.Thread):
         
         current_count = self.target_langs.get(target_lang, 0)
         self.target_langs[target_lang] = current_count + 1
-        LOGGER.info(f'Client subscribed to {target_lang}, current langs: {self.target_langs}')
+        LOGGER.info(f'Subscribed to {target_lang}, current langs: {self.target_langs}')
 
     def unsubscribe_target_lang(self, target_lang: str):
         """Decrement count; remove target lang if count reaches zero."""
@@ -41,7 +41,7 @@ class TranslationWorker(threading.Thread):
         if self.target_langs[target_lang] <= 0:
             del self.target_langs[target_lang]
         
-        LOGGER.info(f'Client unsubscribed from {target_lang}, current langs: {self.target_langs}')
+        LOGGER.info(f'Unsubscribed from {target_lang}, current langs: {self.target_langs}')
     
     def stop(self):
         self._stop_event.set()

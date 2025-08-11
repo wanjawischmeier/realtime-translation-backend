@@ -23,7 +23,7 @@ async def lifespan(app:FastAPI):
             "poetry", "run", "libretranslate",
             "--host", LT_HOST,
             "--port", str(LT_PORT),
-            "--load-only", "en,de"
+            # "--load-only", "en,de" # Only to be used for saving resources during debugging
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE

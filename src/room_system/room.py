@@ -50,7 +50,6 @@ class Room:
         LOGGER.info(f'Activating room <{self.id}>')
         self.active = True
         if self._deactivation_task:
-            LOGGER.info(f'Cancelling imminent deactivation of room <{self.id}>')
             self._deactivation_task.cancel() # Cancel room deactivation
             self._deactivation_task = None
 
@@ -115,6 +114,13 @@ class Room:
         self._deactivation_task = asyncio.create_task(
             deactivate_after_delay()
         )
+    
+    def cancel_deactivation(self):
+        if self._deactivation_task:
+            self._deactivation_task.cancel()
+            self._deactivation_task = None
+            LOGGER.info(f'Cancelled deactivation of room <{self.id}>')
+        
     
     async def restart_engine(self, source_lang: str=None, target_langs: list[str]=None) -> bool:
         if not self.active:
