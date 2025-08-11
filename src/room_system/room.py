@@ -27,10 +27,8 @@ class Room:
         self._room_process: RoomProcess = None
     
     def get_data(self):
-        host_connection_id = ''
-        if self.connection_manager:
-            if self.connection_manager.host_id:
-                host_connection_id = self.connection_manager.host_id
+        host_connection_id = getattr(self.connection_manager, 'host_id', '') or ''
+        source_lang = getattr(self.transcription_manager, 'source_lang', '') or ''
         
         data = {
             'id': self.id,
@@ -39,7 +37,8 @@ class Room:
             'track': self.track,
             'location': self.location,
             'presenter': self.presenter,
-            'host_connection_id': host_connection_id
+            'host_connection_id': host_connection_id,
+            'source_lang': source_lang
         }
 
         if self.active:
