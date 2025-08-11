@@ -98,7 +98,6 @@ class RoomManager:
         LOGGER.info(f'Client joining room: {room_id}')
         try:
             await room.connection_manager.connect_client(client, target_lang)
-            LOGGER.info(f'Added {target_lang} to {room_id}.')
         except Exception as e:
             LOGGER.warning(f'Client connection failed:\n{e}')
             await client.close(code=1003, reason='Internal server error')

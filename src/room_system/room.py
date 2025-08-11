@@ -50,6 +50,7 @@ class Room:
         LOGGER.info(f'Activating room <{self.id}>')
         self.active = True
         if self._deactivation_task:
+            LOGGER.info(f'Cancelling imminent deactivation of room <{self.id}>')
             self._deactivation_task.cancel() # Cancel room deactivation
             self._deactivation_task = None
 

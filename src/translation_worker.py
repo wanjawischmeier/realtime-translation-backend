@@ -10,7 +10,7 @@ from transcription_system.transcription_manager import TranscriptionManager
 
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, transcription_manager:TranscriptionManager, poll_interval=1.0, target_langs: dict[str, int]={}, target_lang: str=None):
+    def __init__(self, transcription_manager: TranscriptionManager, poll_interval=1.0, target_langs: dict[str, int]={}, target_lang: str=None):
         super().__init__()
         self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
         self.poll_interval = poll_interval
@@ -20,6 +20,7 @@ class TranslationWorker(threading.Thread):
         self.target_langs = target_langs
         if target_lang:
             self.subscribe_target_lang(target_lang)
+        LOGGER.info(f'Translation worker initialized with target langs: {self.target_langs}')
     
     def subscribe_target_lang(self, target_lang: str):
         """Increment count for subscription to a target language."""
@@ -28,6 +29,7 @@ class TranslationWorker(threading.Thread):
         
         current_count = self.target_langs.get(target_lang, 0)
         self.target_langs[target_lang] = current_count + 1
+        LOGGER.info(f'Client subscribed to {target_lang}, current langs: {self.target_langs}')
 
     def unsubscribe_target_lang(self, target_lang: str):
         """Decrement count; remove target lang if count reaches zero."""
@@ -35,9 +37,11 @@ class TranslationWorker(threading.Thread):
             return
 
         self.target_langs[target_lang] -= 1
-
+        
         if self.target_langs[target_lang] <= 0:
             del self.target_langs[target_lang]
+        
+        LOGGER.info(f'Client unsubscribed from {target_lang}, current langs: {self.target_langs}')
     
     def stop(self):
         self._stop_event.set()
