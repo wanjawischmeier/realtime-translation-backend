@@ -191,8 +191,8 @@ docker compose up -d
 - [x] Eine Restart-Option für Räume im Frontend implementieren
 - [x] Websocket connects/disconnects handlen und Bugs fixen
   - [x] Unique host id
-  - [x] Client disconnects dont get recognized correctly
-  - [ ] Rooms get prematurely closed upon host reconnects
+  - [x] Fix: Client disconnects dont get recognized correctly
+  - [x] Fix: Rooms get prematurely closed upon host reconnects
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it

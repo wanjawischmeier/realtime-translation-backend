@@ -12,7 +12,6 @@ class RoomManager:
         self.pretalx = pretalx
         self.current_rooms: list[Room] = []
         self._active_room_count = 0
-        self._deactivation_tasks: dict[str, asyncio.Task] = {}
         self.update_rooms()
 
     def get_room(self, room_id: str) -> Room:
@@ -52,11 +51,8 @@ class RoomManager:
         if room.active:
             if source_lang == room.transcription_manager.source_lang:
                 # Matching configuration
-                task = self._deactivation_tasks.get(room.id, None)
-                if task:
-                    task.cancel() # Cancel room deactivation
-                
                 LOGGER.info(f'Host joined already active room <{room_id}> with matching configuration')
+                room.cancel_deactivation()
                 await room.connection_manager.ready_to_recieve_audio(host)
             else:
                 # Configuration mismatch, restart room
