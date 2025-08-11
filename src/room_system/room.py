@@ -87,7 +87,6 @@ class Room:
             LOGGER.warning(f'Tried to deactivate inactive room <{self.id}>')
             return False
             
-        # TODO: properly close room
         await self.cancel()
         self.connection_manager.dereference_host()
         self.active = False
