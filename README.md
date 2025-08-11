@@ -193,6 +193,7 @@ docker compose up -d
   - [x] Unique host id
   - [x] Fix: Client disconnects dont get recognized correctly
   - [x] Fix: Rooms get prematurely closed upon host reconnects
+  - [ ] Fix: Multiple hosts not allowed error
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
