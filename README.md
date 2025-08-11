@@ -76,7 +76,8 @@ endpoints:
       "track": "",
       "location": "",
       "presenter": "",
-      "host_connection_id": ""
+      "host_connection_id": "",
+      "source_lang": ""
     }
   ]
 }
@@ -194,6 +195,7 @@ docker compose up -d
   - [x] Fix: Client disconnects dont get recognized correctly
   - [x] Fix: Rooms get prematurely closed upon host reconnects
   - [ ] Fix: Multiple hosts not allowed error
+  - [x] Preserve source lang across host reconnects
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
