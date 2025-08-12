@@ -96,6 +96,14 @@ class ConnectionManager:
     def dereference_host(self):
         self.host_id = ''
         
+    async def disconnect_all(self):
+        await self._host.close(code=1003, reason='Room closed by an admin')
+        self._host = None
+        for client in self._clients:
+            await client.close('Room closed by an admin')
+        
+        self._clients = []
+        
     async def connect_client(self, client: WebSocket, target_lang: str):
         self._clients.append(client)
         await client.send_json(self.transcription_manager.last_transcript_chunk) # Inital transcript chunk
