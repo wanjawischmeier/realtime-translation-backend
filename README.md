@@ -196,6 +196,8 @@ docker compose up -d
   - [x] Fix: Client disconnects dont get recognized correctly
   - [x] Fix: Rooms get prematurely closed upon host reconnects
   - [ ] Fix: Multiple hosts not allowed error
+    - Very rare, have not been able to pin it down
+    - Is maybe fine for now as rooms can be restarted
   - [x] Preserve source lang across host reconnects
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
@@ -208,6 +210,7 @@ docker compose up -d
   - [x] Endpoint to provide list of all room id's that have transcripts stored to disk
     - Available as [transcript info](#transcript-infos) at [/transcript_list](#endpoints)
     - [ ] Also store and provide room metadata alongside (@whoami)
+    - [ ] Respect user preferences on wether to store transcripts (@substatoo)
 - [ ] (Pause fetch loop when connected host is not streaming?)
 - [x] Respect whisper instance limit when activating rooms
 - [x] Whisper `device, compute_type` passthrough to cli from custom WhisperLiveKit fork
@@ -228,7 +231,7 @@ docker compose up -d
   - [x] Ignore target langs that are equal to source lang (don't add to list)
 - [x] Send initial transcript chunk on client connection
 - [x] Move transcript and room system to seperate files in dedicated dirs
-- [ ] Pace translation worker
+- [ ] Pace translation worker (@substratoo)
   - As of now will just work through all sentences in one loop if a new language gets subscribed to
 - [x] Add admin acc
   - [x] Ability to force close rooms as admin
