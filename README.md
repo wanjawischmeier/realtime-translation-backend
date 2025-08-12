@@ -33,6 +33,7 @@ endpoints:
   - `GET /room_list`: Returns a [room list](#room-list)
   - `GET /transcript_list`: Returns a list of [transcript infos](#transcript-infos)
   - `GET /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang` as a string. Joins all partial transcripts available for that room.
+  - `POST /room/{room_id}/close`: Closes that room, can only be performed with admin password.
 - `ws://localhost:8000/room/{room_id}/{role}/{source_lang}/{target_lang}`
   - FastAPI websocket for handling streaming
   - Bidirectional
