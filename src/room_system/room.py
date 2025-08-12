@@ -23,6 +23,8 @@ class Room:
         self.transcription_manager: TranscriptionManager = transcription_manager
         self.connection_manager: ConnectionManager = connection_manager
         self.translation_worker: TranslationWorker = translation_worker
+        self.save_transcript: bool = False
+        self.public_transcript: bool = False
         self._deactivation_task: asyncio.Task = None
         self._room_process: RoomProcess = None
     
@@ -45,14 +47,16 @@ class Room:
             data['source_lang'] = self.transcription_manager.source_lang
         return data
     
-    async def activate(self, source_lang: str, target_langs: dict[str, int]={}, connection_manager: ConnectionManager=None, target_lang: str=None):
+    async def activate(self, source_lang: str, target_langs: dict[str, int]={}, connection_manager: ConnectionManager=None, save_transcript:bool =False, public_transcript: bool=False, target_lang: str=None):
         LOGGER.info(f'Activating room <{self.id}>')
         self.active = True
+        self.save_transcript = save_transcript
+        self.public_transcript = public_transcript
         if self._deactivation_task:
             self._deactivation_task.cancel() # Cancel room deactivation
             self._deactivation_task = None
 
-        self.transcription_manager = TranscriptionManager(self.id, source_lang)
+        self.transcription_manager = TranscriptionManager(self.id, source_lang, save_transcript=save_transcript)
         self._room_process = RoomProcess(self.id, source_lang)
         self.translation_worker = TranslationWorker(
             self.transcription_manager,
@@ -65,8 +69,8 @@ class Room:
             # Update fields
             connection_manager.transcription_manager = self.transcription_manager
             connection_manager.translation_worker = self.translation_worker
-            connection_manager.audio_chunk_recieved = self._room_process.send_audio_chunk
-            connection_manager.transcript_chunk_recieved = self.transcription_manager.submit_chunk
+            connection_manager.audio_chunk_received = self._room_process.send_audio_chunk
+            connection_manager.transcript_chunk_received = self.transcription_manager.submit_chunk
             connection_manager.transcript_chunk_provider = self._room_process.get_transcript_chunk
             self.connection_manager = connection_manager
         else:

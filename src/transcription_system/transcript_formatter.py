@@ -6,6 +6,7 @@ from typing import Any
 from io_config.logger import LOGGER
 from io_config.config import TRANSCRIPT_DB_DIRECTORY
 
+#TODO add room metadata
 
 def format_time(seconds: int) -> str:
     """Convert seconds to HH:MM:SS format."""
@@ -21,14 +22,14 @@ def get_chunk_timestamps_from_dir(dir_path: str) -> tuple[int, int]:
     If no chunks, both values are None.
     """
     timestamps = []
-    for fname in os.listdir(dir_path):
-        if fname.endswith('.pkl'):
+    for filename in os.listdir(dir_path):
+        if filename.endswith('.pkl'):
             try:
-                t_str = fname.replace('.pkl', '')
+                t_str = filename.replace('.pkl', '')
                 dt = datetime.strptime(t_str, '%Y-%m-%d_%H-%M')
                 # UNIX timestamp (integer, seconds)
                 timestamps.append(int(dt.timestamp()))
-            except Exception:
+            except Exception: #TODO
                 continue
     if not timestamps:
         return None, None
@@ -67,16 +68,14 @@ def get_available_transcript_list():
 
 def get_transcript_from_file(transcript_db_path: str, lang: str) -> str:
     if not os.path.exists(transcript_db_path):
-        LOGGER.error(f'Unable to load transcript, invalid path: {transcript_db_path}')
-        return
+        raise FileNotFoundError(f'Unable to load transcript, invalid path: {transcript_db_path}')
     
     with open(transcript_db_path, 'rb') as pkl_file:
         lines = pickle.load(pkl_file)
-    
     return get_transcript_from_lines(lines, lang)
 
 def get_transcript_from_lines(lines: list[dict[str, Any]], lang: str) -> str:
-        """Generate a human readable transcript string in the desired language."""
+        """Generate a human-readable transcript string in the desired language."""
         lines_output = []
         for line in lines:
             # Only include sentences where target lang available (non-empty)
@@ -108,12 +107,12 @@ def get_transcript_from_lines(lines: list[dict[str, Any]], lang: str) -> str:
 def compile_transcript_from_dir(transcript_dir: str, lang: str) -> str:
     # List .pkl files, extracting their timestamps
     files = []
-    for fname in os.listdir(transcript_dir):
-        if fname.endswith('.pkl'):
+    for filename in os.listdir(transcript_dir):
+        if filename.endswith('.pkl'):
             try:
-                timestamp_str = fname.replace('.pkl', '')
+                timestamp_str = filename.replace('.pkl', '')
                 dt = datetime.strptime(timestamp_str, '%Y-%m-%d_%H-%M')
-                files.append((dt, fname))
+                files.append((dt, filename))
             except ValueError:
                 # Ignore files not matching expected pattern
                 continue
@@ -123,12 +122,12 @@ def compile_transcript_from_dir(transcript_dir: str, lang: str) -> str:
 
     # Compile transcript
     compiled_chunks = []
-    for dt, fname in files:
+    for dt, filename in files:
         human_time = dt.strftime("%A, %B %d, %Y at %H:%M")
         header = f"[Transcription started on {human_time}]"
-        transcript_path = os.path.join(transcript_dir, fname)
+        transcript_path = os.path.join(transcript_dir, filename)
         chunk = get_transcript_from_file(transcript_path, lang)
-        if chunk:  # skip empty or error'd chunks
+        if chunk:  # skip empty or errored chunks
             compiled_chunks.append(header)
             compiled_chunks.append(chunk)
             compiled_chunks.append("")  # Blank line between chunks

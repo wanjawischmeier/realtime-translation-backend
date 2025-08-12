@@ -14,8 +14,10 @@ from transcription_system.sentence_tokenizer import punkt_language_map, sent_tok
 
 
 class TranscriptionManager:
-    def __init__(self, room_id, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs", compare_depth=10, num_sentences_to_broadcast=20):
+    def __init__(self, room_id, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs", compare_depth=10, num_sentences_to_broadcast=20,
+                 save_transcript: bool=False):
         
+        self.save_transcript = save_transcript
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
 
@@ -244,8 +246,9 @@ class TranscriptionManager:
             log_to_translate(self._to_translate, self.log_path)
 
         # write changes to disk
-        with open(self._transcript_db_path, 'wb') as pkl_file:
-            pickle.dump(self._lines, pkl_file)
+        if self.save_transcript:
+            with open(self._transcript_db_path, 'wb') as pkl_file:
+                pickle.dump(self._lines, pkl_file)
 
     def poll_sentences_to_translate(self):
         with self.lock:
