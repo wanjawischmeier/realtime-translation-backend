@@ -235,3 +235,4 @@ docker compose up -d
   - As of now will just work through all sentences in one loop if a new language gets subscribed to
 - [x] Add admin acc
   - [x] Ability to force close rooms as admin
+- [ ] Help markdown file (@whoami)
