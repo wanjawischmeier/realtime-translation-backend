@@ -85,10 +85,13 @@ class Room:
         # Start the room subprocess (needs connection manager to be initialized)
         self._room_process.start(self.connection_manager.ready_to_recieve_audio)
     
-    async def deactivate(self) -> bool:
+    async def deactivate(self, disconnect=False) -> bool:
         if not self.active:
             LOGGER.warning(f'Tried to deactivate inactive room <{self.id}>')
             return False
+        
+        if disconnect:
+            await self.connection_manager.disconnect_all()
             
         await self.cancel()
         self.connection_manager.dereference_host()

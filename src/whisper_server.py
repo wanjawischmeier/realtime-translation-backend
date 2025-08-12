@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from io_config.config import LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
+from io_config.config import ADMIN_PASSWORD, LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
 from io_config.logger import LOGGER
 from room_system.room_manager import room_manager
 from transcription_system.transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
@@ -72,8 +72,23 @@ async def get_transcript_list():
     return JSONResponse(get_available_transcript_list())
 
 @app.get("/room/{room_id}/transcript/{target_lang}")
-async def connect_to_room(room_id: str, target_lang: str):
+async def get_transcript_for_room(room_id: str, target_lang: str):
     return PlainTextResponse(compile_transcript_from_room_id(room_id, target_lang))
+
+@app.post("/room/{room_id}/close")
+async def request_close_room(request: Request, room_id: str):
+    body = await request.json()
+    password = body.get("password")
+    if not password or password != ADMIN_PASSWORD:
+        LOGGER.info(f"Failed to close room <{room_id}>: Incorrect admin password")
+        return JSONResponse({"status": "fail"}, status_code=503)
+    
+    if not await room_manager.deactivate_room(room_id):
+        LOGGER.info(f"Failed to close room <{room_id}>: Failed to deactivate")
+        return JSONResponse({"status": "fail"}, status_code=503)
+        
+    LOGGER.info(f"Closed room <{room_id}> on admin request")
+    return JSONResponse({"status": "ok"}, status_code=200)
 
 @app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}")
 async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str):
@@ -89,7 +104,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
 
     if role == 'host':
         password = websocket.cookies.get('authenticated')
-        if not password or password != HOST_PASSWORD:
+        if not password or not (password == HOST_PASSWORD or password == ADMIN_PASSWORD):
             await websocket.close(code=1003, reason='Authentification failed: no valid password in session cookie')
             return
         

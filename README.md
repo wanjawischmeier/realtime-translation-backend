@@ -229,3 +229,5 @@ docker compose up -d
 - [x] Move transcript and room system to seperate files in dedicated dirs
 - [ ] Pace translation worker
   - As of now will just work through all sentences in one loop if a new language gets subscribed to
+- [x] Add admin acc
+  - [x] Ability to force close rooms as admin
