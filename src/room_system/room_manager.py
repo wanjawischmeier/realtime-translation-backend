@@ -97,6 +97,21 @@ class RoomManager:
         except Exception as e:
             LOGGER.warning(f'Client connection failed:\n{e}')
             await client.close(code=1003, reason='Internal server error')
+    
+    async def deactivate_room(self, room_id: str) -> bool:
+        room = None
+        for current_room in self.current_rooms:
+            if current_room.id == room_id and current_room.active:
+                room = current_room
+        
+        if not room:
+            LOGGER.info(f'No active room <{room_id}> found')
+            return False
+        
+        LOGGER.info(f'Deactivating room <{room_id}> based on direct request')
+        self._active_room_count = max(0, self._active_room_count - 1)
+        await room.deactivate(disconnect=True)
+        return True
 
     def get_room_list(self):
         rooms = []
