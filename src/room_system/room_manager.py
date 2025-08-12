@@ -28,7 +28,15 @@ class RoomManager:
             room = Room(event['code'], event['title'], event['track'], event['room'], event['url'], event['description'],
                 event['persons'][0]['name'], event['do_not_record'])
             self.current_rooms.append(room)
-        self.current_rooms.append(Room('dev_room_id', 'dev_titel', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
+        
+        # TODO: remove dev rooms
+        self.current_rooms.append(Room('dev_room_id_0', 'dev_titel 1', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
+        self.current_rooms.append(Room('dev_room_id_1', 'dev_titel 2', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
+        self.current_rooms.append(Room('dev_room_id_2', 'dev_titel 3', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
+        self.current_rooms.append(Room('dev_room_id_3', 'dev_titel 4', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
+        self.current_rooms.append(Room('dev_room_id_4', 'dev_titel 5', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
+        self.current_rooms.append(Room('dev_room_id_5', 'dev_titel 6', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
+        self.current_rooms.append(Room('dev_room_id_6', 'dev_titel 7', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
     
     async def activate_room_as_host(self, host: WebSocket, room_id:str, source_lang:str, target_lang: str):
         room = self.get_room(room_id)
