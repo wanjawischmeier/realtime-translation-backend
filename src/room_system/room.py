@@ -69,8 +69,8 @@ class Room:
             # Update fields
             connection_manager.transcription_manager = self.transcription_manager
             connection_manager.translation_worker = self.translation_worker
-            connection_manager.audio_chunk_received = self._room_process.send_audio_chunk
-            connection_manager.transcript_chunk_received = self.transcription_manager.submit_chunk
+            connection_manager.audio_chunk_recieved = self._room_process.send_audio_chunk
+            connection_manager.transcript_chunk_recieved = self.transcription_manager.submit_chunk
             connection_manager.transcript_chunk_provider = self._room_process.get_transcript_chunk
             self.connection_manager = connection_manager
         else:
