@@ -10,7 +10,7 @@ from transcription_system.transcription_manager import TranscriptionManager
 
 
 class TranslationWorker(threading.Thread):
-    def __init__(self, transcription_manager: TranscriptionManager, poll_interval=1.0, target_langs: dict[str, int]={}, target_lang: str=None):
+    def __init__(self, transcription_manager: TranscriptionManager, poll_interval=1.0, target_langs: dict[str, int]={}, target_lang: str=None, max_batch_translations=4):
         super().__init__()
         self.lt = LibreTranslateAPI(f"http://{LT_HOST}:{LT_PORT}")
         self.poll_interval = poll_interval
@@ -18,6 +18,7 @@ class TranslationWorker(threading.Thread):
         self._transcription_manager: TranscriptionManager = transcription_manager
         self._stop_event = threading.Event()
         self.target_langs = target_langs
+        self._max_batch_translations = max_batch_translations
         if target_lang:
             self.subscribe_target_lang(target_lang)
         LOGGER.info(f'Translation worker initialized with target langs: {self.target_langs}')
@@ -71,6 +72,11 @@ class TranslationWorker(threading.Thread):
                         'lang': target_lang,
                         'translation': translation
                     })
+                    
+                    if len(translation_results) >= self._max_batch_translations:
+                        # Protect against taking up too many resources with translation
+                        break
+                
                 if translation_results:
                     translation_time = time.time() - cycle_start
                     self._transcription_manager.submit_translation(translation_results, translation_time)

@@ -231,7 +231,7 @@ docker compose up -d
   - [x] Ignore target langs that are equal to source lang (don't add to list)
 - [x] Send initial transcript chunk on client connection
 - [x] Move transcript and room system to seperate files in dedicated dirs
-- [ ] Pace translation worker (@substratoo)
+- [x] Pace translation worker (@substratoo)
   - As of now will just work through all sentences in one loop if a new language gets subscribed to
 - [x] Add admin acc
   - [x] Ability to force close rooms as admin
