@@ -37,9 +37,10 @@ async def lifespan(app:FastAPI):
         server_ready = False
 
 app = FastAPI(lifespan=lifespan)
+ngrok_url = "https://3ee4395e6f01.ngrok-free.app"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", ngrok_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +57,8 @@ async def health():
 async def auth(request: Request):
     body = await request.json()
     password = body.get("password")
+    if ngrok_url == request.headers.get('origin'):
+        password = HOST_PASSWORD # TODO: remove temporary bypass for ngrok
     if not password or password != HOST_PASSWORD:
         LOGGER.info("Failed auth request")
         return JSONResponse({"status": "fail"}, status_code=503)
@@ -103,7 +106,9 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         return
 
     if role == 'host':
-        password = websocket.cookies.get('authenticated')
+        password = websocket.cookies.get('authenticated')  
+        if ngrok_url == websocket.headers.get('origin'):
+            password = ADMIN_PASSWORD # TODO: remove temporary bypass for ngrok
         if not password or not (password == HOST_PASSWORD or password == ADMIN_PASSWORD):
             await websocket.close(code=1003, reason='Authentification failed: no valid password in session cookie')
             return
