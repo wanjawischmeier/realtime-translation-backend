@@ -236,3 +236,4 @@ docker compose up -d
 - [x] Add admin acc
   - [x] Ability to force close rooms as admin
 - [ ] Help markdown file (@whoami)
+- [ ] Ending process does not work properly some threads seems to stay running
