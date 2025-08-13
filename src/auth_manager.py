@@ -18,8 +18,8 @@ class AuthManager:
             "power":power
         }
 
-    def login(self, password):
-        if password == HOST_PASSWORD or password == ADMIN_PASSWORD:
+    def login(self, password, role=None):
+        if (password == HOST_PASSWORD or password == ADMIN_PASSWORD) and (role is None or (role != "admin" or password == ADMIN_PASSWORD)):
             unique_key = self.generate_unique_key()
             expire_hours = 3
             power = "admin" if ADMIN_PASSWORD == password else "host"

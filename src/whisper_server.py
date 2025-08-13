@@ -58,17 +58,17 @@ async def health():
 async def auth(request: Request):
     body = await request.json()
     password = body.get("password")
+    role = body.get("role")
     if ngrok_url == request.headers.get('origin'):
-        password = HOST_PASSWORD # TODO: remove temporary bypass for ngrok
-    
-    result = auth_manager.login(password)
+        password = ADMIN_PASSWORD # TODO: remove temporary bypass for ngrok
+        role = "admin"
+    result = auth_manager.login(password,role if role else None)
 
     if not result or result == False:
         LOGGER.info("Failed auth request")
         return JSONResponse({"status": "fail"}, status_code=503)
     else:
         LOGGER.info("Succesful auth request")
-        print(result)
         return JSONResponse({
             "status": "ok",
             "key": result["key"],
