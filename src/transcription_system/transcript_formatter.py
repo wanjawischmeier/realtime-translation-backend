@@ -5,8 +5,7 @@ from typing import Any
 
 from io_config.logger import LOGGER
 from io_config.config import TRANSCRIPT_DB_DIRECTORY
-
-#TODO add room metadata
+from room_system.room_manager import room_manager
 
 def format_time(seconds: int) -> str:
     """Convert seconds to HH:MM:SS format."""
@@ -57,7 +56,7 @@ def get_available_transcript_directories(root_path: str) -> list[dict]:
         if os.path.isdir(dir_path):
             first_ts, last_ts = get_chunk_timestamps_from_dir(dir_path)
             results.append({
-                'id': name,
+                'event_data': room_manager.pretalx.get_event_by_id(name),
                 'firstChunkTimestamp': first_ts,
                 'lastChunkTimestamp': last_ts
             })

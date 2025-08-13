@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta, time
 
-import dateutil.parser
 import pytz
+import dateutil.parser
 import requests
 
 from io_config.config import JSON_URL, CACHE_TIME
@@ -14,7 +14,7 @@ class Track:
         self.color = color
 
 class Conference:
-    def __init__(self, title: str, start: date, end: date, days: int, url: str, timezone: pytz.tzinfo,
+    def __init__(self, title: str, start: date, end: date, days: int, url: str, timezone: pytz.BaseTzInfo,
                  colors: dict, tracks: list[Track]):
         self.title = title
         self.start = start
@@ -80,6 +80,15 @@ class PretalxAPI:
         self.ongoing_events.sort(key=lambda e: dateutil.parser.isoparse(e['date'])) # Sorts list by date
         LOGGER.info(f"Ongoing Events:\n {[e for e in self.ongoing_events]}")
 
+    def get_event_by_id(self, room_id:str):
+        for day in self.data['conference']['days']:
+            for name, events in day['rooms'].items():
+                for event in events:
+                    if event['code'] == room_id:
+                        return event
+        raise APIError(f"No Event found with this id: {room_id}")
+
+
 class APIError(Exception):
     pass
 
@@ -89,4 +98,5 @@ pretalx = PretalxAPI()
 print(pretalx.conference.__dict__)
 pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
 [print(e) for e in pretalx.ongoing_events]
+print(pretalx.get_event_by_id("ECUGNH"))
 """
