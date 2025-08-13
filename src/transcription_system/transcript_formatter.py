@@ -5,6 +5,7 @@ from typing import Any
 
 from io_config.logger import LOGGER
 from io_config.config import TRANSCRIPT_DB_DIRECTORY
+from pretalx_api_wrapper import APIError
 from room_system.room_manager import room_manager
 
 def format_time(seconds: int) -> str:
@@ -55,11 +56,14 @@ def get_available_transcript_directories(root_path: str) -> list[dict]:
         dir_path = os.path.join(root_path, name)
         if os.path.isdir(dir_path):
             first_ts, last_ts = get_chunk_timestamps_from_dir(dir_path)
-            results.append({
-                'event_data': room_manager.pretalx.get_event_by_id(name),
-                'firstChunkTimestamp': first_ts,
-                'lastChunkTimestamp': last_ts
-            })
+            try:
+                results.append({
+                    'event_data': room_manager.pretalx.get_event_by_id(name),
+                    'firstChunkTimestamp': first_ts,
+                    'lastChunkTimestamp': last_ts
+                })
+            except APIError:
+                LOGGER.warning(f"Couldn't find event data for transcript with {name}")
     return results
 
 def get_available_transcript_list():
