@@ -54,14 +54,14 @@ async def health():
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
 
-@app.post("/auth")
+@app.post("/login")
 async def auth(request: Request):
     body = await request.json()
     password = body.get("password")
     if ngrok_url == request.headers.get('origin'):
         password = HOST_PASSWORD # TODO: remove temporary bypass for ngrok
     
-    result = auth_manager.authenticate(password)
+    result = auth_manager.login(password)
 
     if not result or result == False:
         LOGGER.info("Failed auth request")
@@ -72,8 +72,22 @@ async def auth(request: Request):
         return JSONResponse({
             "status": "ok",
             "key": result["key"],
+            "power": result["power"],
             "expire_hours": result["expire_hours"]
         }, status_code=200)
+
+@app.post("/auth")
+async def validate_key(request: Request):
+    body = await request.json()
+    key = body.get("key")
+
+    result = auth_manager.get_entry(key)
+
+    if result:
+        return JSONResponse({"status": "valid",
+            "power": result["power"]}, status_code=200)
+    else:
+        return JSONResponse({"status": "fail"}, status_code=503)
 
 @app.post("/validate")
 async def validate_key(request: Request):
@@ -100,8 +114,8 @@ async def get_transcript_for_room(room_id: str, target_lang: str):
 @app.post("/room/{room_id}/close")
 async def request_close_room(request: Request, room_id: str):
     body = await request.json()
-    password = body.get("password")
-    if not password or password != ADMIN_PASSWORD:
+    key = body.get("key")
+    if auth_manager.validate_key(key,"admin"):
         LOGGER.info(f"Failed to close room <{room_id}>: Incorrect admin password")
         return JSONResponse({"status": "fail"}, status_code=503)
     
