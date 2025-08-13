@@ -5,10 +5,11 @@ from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-from io_config.config import ADMIN_PASSWORD, LT_HOST, LT_PORT, API_HOST, API_PORT, HOST_PASSWORD
+from io_config.config import ADMIN_PASSWORD, LT_HOST, LT_PORT, API_HOST, API_PORT
 from io_config.logger import LOGGER
 from room_system.room_manager import room_manager
 from transcription_system.transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
+from auth_manager import auth_manager
 
 server_ready = False
 
@@ -59,13 +60,31 @@ async def auth(request: Request):
     password = body.get("password")
     if ngrok_url == request.headers.get('origin'):
         password = HOST_PASSWORD # TODO: remove temporary bypass for ngrok
-    if not password or password != HOST_PASSWORD:
+    
+    result = auth_manager.authenticate(password)
+
+    if not result or result == False:
         LOGGER.info("Failed auth request")
         return JSONResponse({"status": "fail"}, status_code=503)
     else:
         LOGGER.info("Succesful auth request")
-        return JSONResponse({"status": "ok"}, status_code=200)
+        print(result)
+        return JSONResponse({
+            "status": "ok",
+            "key": result["key"],
+            "expire_hours": result["expire_hours"]
+        }, status_code=200)
 
+@app.post("/validate")
+async def validate_key(request: Request):
+    body = await request.json()
+    key = body.get("key")
+
+    if auth_manager.validate_key(key):
+        return JSONResponse({"status": "valid"}, status_code=200)
+    else:
+        return JSONResponse({"status": "fail"}, status_code=503)
+        
 @app.get("/room_list")
 async def get_room_list():
     return JSONResponse(room_manager.get_room_list())
@@ -106,10 +125,10 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         return
 
     if role == 'host':
-        password = websocket.cookies.get('authenticated')  
+        key = websocket.cookies.get('authenticated')  
         if ngrok_url == websocket.headers.get('origin'):
-            password = ADMIN_PASSWORD # TODO: remove temporary bypass for ngrok
-        if not password or not (password == HOST_PASSWORD or password == ADMIN_PASSWORD):
+            key = "BYPASS" # TODO: remove temporary bypass for ngrok
+        elif not auth_manager.validate_key(key):
             await websocket.close(code=1003, reason='Authentification failed: no valid password in session cookie')
             return
         
