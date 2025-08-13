@@ -63,7 +63,7 @@ def get_available_transcript_directories(root_path: str) -> list[dict]:
                     'lastChunkTimestamp': last_ts
                 })
             except APIError:
-                LOGGER.warning(f"Couldn't find event data for transcript with {name}")
+                LOGGER.warning(f"Couldn't find event data for transcript with id {name}")
     return results
 
 def get_available_transcript_list():
