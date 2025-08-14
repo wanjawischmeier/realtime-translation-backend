@@ -2,7 +2,7 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
-from requests import RequestException
+from requests import HTTPError
 
 from io_config.config import LT_HOST, LT_PORT
 from io_config.logger import LOGGER
@@ -63,7 +63,7 @@ class TranslationWorker(threading.Thread):
                     sentence = entry['sentence']
                     try:
                         translation = self.lt.translate(sentence, source=self._transcription_manager.source_lang, target=target_lang)
-                    except RequestException as e:
+                    except HTTPError as e:
                         LOGGER.error(f"Translation error for '{sentence}' to '{target_lang}': {e}")
                         continue
                     translation_results.append({

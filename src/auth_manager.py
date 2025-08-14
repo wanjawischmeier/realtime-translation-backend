@@ -43,8 +43,8 @@ class AuthManager:
         if stored and stored is not None:
             
             if power is not "admin" or stored["power"] is power:
-                return True
                 LOGGER.info(f"Key validation successful for user and enough power")
+                return True
             else:
                 LOGGER.warning(f"Key validation successful for user but missing power")
                 return False

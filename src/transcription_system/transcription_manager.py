@@ -21,11 +21,12 @@ class TranscriptionManager:
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
 
-        transcripts_db_directory = f"{transcripts_db_directory}/{room_id}"
-        if not os.path.exists(transcripts_db_directory):
-            os.makedirs(transcripts_db_directory)
-        if not os.path.exists(log_directory):
-            os.mkdir(log_directory)
+        if save_transcript:
+            transcripts_db_directory = f"{transcripts_db_directory}/{room_id}"
+            if not os.path.exists(transcripts_db_directory):
+                os.makedirs(transcripts_db_directory)
+            if not os.path.exists(log_directory):
+                os.mkdir(log_directory)
 
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
         self._transcript_db_path = f"{transcripts_db_directory}/{timestamp}.pkl"

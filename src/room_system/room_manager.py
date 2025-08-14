@@ -1,4 +1,3 @@
-import asyncio
 from fastapi import WebSocket
 
 from pretalx_api_wrapper import PretalxAPI
@@ -8,7 +7,7 @@ from io_config.logger import LOGGER
 
 
 class RoomManager:
-    def __init__(self, pretalx:PretalxAPI):
+    def __init__(self, pretalx: PretalxAPI):
         self.pretalx = pretalx
         self.current_rooms: list[Room] = []
         self._active_room_count = 0
@@ -22,23 +21,19 @@ class RoomManager:
             return room
 
     def update_rooms(self):
-        self.pretalx.get_ongoing_events()
+        self.pretalx.get_ongoing_events(fake_now='2025-08-18T14:20:00+02:00') # TODO: remove fakenow in production
         self.current_rooms.clear()
         for event in self.pretalx.ongoing_events:
+            presenter = 'Unknown'
+            persons = event['persons']
+            if persons: # Some rooms leave this as an empty list
+                presenter = persons[0]['name']
+            
             room = Room(event['code'], event['title'], event['track'], event['room'], event['url'], event['description'],
-                event['persons'][0]['name'], event['do_not_record'])
+                presenter, event['do_not_record'])
             self.current_rooms.append(room)
-        
-        # TODO: remove dev rooms
-        self.current_rooms.append(Room('dev_room_id_0', 'dev_titel 1', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
-        self.current_rooms.append(Room('dev_room_id_1', 'dev_titel 2', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
-        self.current_rooms.append(Room('dev_room_id_2', 'dev_titel 3', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
-        self.current_rooms.append(Room('dev_room_id_3', 'dev_titel 4', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
-        self.current_rooms.append(Room('dev_room_id_4', 'dev_titel 5', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
-        self.current_rooms.append(Room('dev_room_id_5', 'dev_titel 6', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
-        self.current_rooms.append(Room('dev_room_id_6', 'dev_titel 7', 'dev_track','dev_room', 'dev_url','dev_des', 'bob', False))
     
-    async def activate_room_as_host(self, host: WebSocket, room_id:str, source_lang:str, target_lang: str):
+    async def activate_room_as_host(self, host: WebSocket, room_id:str, source_lang:str, target_lang: str, save_transcript: bool):
         room = self.get_room(room_id)
         if not room:
             await host.close(code=1003, reason=f'Room <{room_id}> not found')
@@ -74,7 +69,7 @@ class RoomManager:
                 return
 
             self._active_room_count += 1
-            await room.activate(source_lang, target_lang=target_lang)
+            await room.activate(source_lang, target_lang=target_lang, save_transcript=save_transcript)
 
         LOGGER.info(f'Attempting to start listening for host in room <{room_id}>...')
         await room.connection_manager.listen_to_host(host, target_lang)
