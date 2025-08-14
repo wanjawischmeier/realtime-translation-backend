@@ -2,7 +2,7 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
-from requests import HTTPError
+from urllib.error import HTTPError
 
 from io_config.config import LT_HOST, LT_PORT
 from io_config.logger import LOGGER
