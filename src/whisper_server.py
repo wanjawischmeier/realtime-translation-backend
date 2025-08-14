@@ -38,7 +38,7 @@ async def lifespan(app:FastAPI):
         server_ready = False
 
 app = FastAPI(lifespan=lifespan)
-ngrok_url = "https://f3d1e557785e.ngrok-free.app"
+ngrok_url = "https://30909944add9.ngrok-free.app/"
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", ngrok_url],
