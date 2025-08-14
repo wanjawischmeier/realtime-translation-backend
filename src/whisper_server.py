@@ -143,7 +143,7 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         if ngrok_url == websocket.headers.get('origin'):
             key = "BYPASS" # TODO: remove temporary bypass for ngrok
         elif not auth_manager.validate_key(key):
-            await websocket.close(code=1003, reason='Authentification failed: no valid password in session cookie')
+            await websocket.close(code=1008, reason='Authentification failed: no valid password in session cookie')
             return
         
         if not source_lang:
