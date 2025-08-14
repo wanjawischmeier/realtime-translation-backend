@@ -238,3 +238,4 @@ docker compose up -d
   - [x] Ability to force close rooms as admin
 - [ ] Help markdown file (@whoami)
 - [ ] Ending process does not work properly some threads seems to stay running
+- [x] Translation worker should only try to fetch the most recent n sentences (in reverse order, so most recent first)

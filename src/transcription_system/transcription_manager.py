@@ -4,7 +4,7 @@ import pickle
 import threading
 from datetime import datetime
 
-from io_config.cli import LOG_TRANSCRIPTS
+from io_config.cli import LOG_TRANSCRIPTS, BACKLOG_SIZE
 from io_config.logger import LOGGER
 from rolling_average import RollingAverage
 from transcription_system.transcription_helper import filter_complete_sentences, get_last_n_sentences, time_str_to_seconds
@@ -14,7 +14,7 @@ from transcription_system.sentence_tokenizer import punkt_language_map, sent_tok
 
 
 class TranscriptionManager:
-    def __init__(self, room_id, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs", compare_depth=10, num_sentences_to_broadcast=20,
+    def __init__(self, room_id, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs", compare_depth=10,
                  save_transcript: bool=False, public_transcript: bool=False):
         
         self.save_transcript = save_transcript
@@ -36,7 +36,6 @@ class TranscriptionManager:
         self.compare_depth = compare_depth
         self.source_lang = source_lang
         self._punkt_lang = punkt_language_map.get(source_lang)
-        self._num_sentences_to_broadcast = num_sentences_to_broadcast
         self.last_transcript_chunk = {
             'last_n_sents': [],
             'incomplete_sentence': '',
@@ -224,7 +223,7 @@ class TranscriptionManager:
     
     def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
-        last_n_sents = get_last_n_sentences(self._lines, self._num_sentences_to_broadcast)
+        last_n_sents = get_last_n_sentences(self._lines, BACKLOG_SIZE)
         self.last_transcript_chunk = {
             'last_n_sents': last_n_sents,
             'incomplete_sentence': self._incomplete_sentence,
@@ -251,10 +250,10 @@ class TranscriptionManager:
             with open(self._transcript_db_path, 'wb') as pkl_file:
                 pickle.dump(self._lines, pkl_file)
 
-    def poll_sentences_to_translate(self):
+    def poll_sentences_to_translate(self, max_backlog: int):
         with self.lock:
-            # Return the list as-is
-            return self._to_translate
+            # Take last `max_backlog` items and reverse them
+            return self._to_translate[-max_backlog:][::-1]
 
     def _add_to_translation_queue(self, line_idx, sent_idx, sentence):
         # Find existing entry for this (line_idx, sent_idx)
