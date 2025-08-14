@@ -40,5 +40,5 @@ LOGLEVEL: Final[str] = ARGS.loglevel
 LOG_TRANSCRIPTS: Final[bool] = ARGS.log_transcripts
 
 # Lightweight dev args: --model tiny
-# Production args: --model medium --vac --buffer_trimming sentence --min-chunk-size 1 --vac-chunk-size 1 --device cuda --compute-type float32
+# Production args: poetry run python src/whisper_server.py --model medium -vac --buffer_trimming sentence --min-chunk-size 1 --vac-chunk-size 1 --device cuda --compute-type float32
 # To download a model: poetry run whisperlivekit-server --model <model>
