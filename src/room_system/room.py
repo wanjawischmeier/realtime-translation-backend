@@ -23,8 +23,6 @@ class Room:
         self.transcription_manager: TranscriptionManager = transcription_manager
         self.connection_manager: ConnectionManager = connection_manager
         self.translation_worker: TranslationWorker = translation_worker
-        self.save_transcript: bool = False
-        self.public_transcript: bool = False
         self._deactivation_task: asyncio.Task = None
         self._room_process: RoomProcess = None
     
@@ -47,16 +45,19 @@ class Room:
             data['source_lang'] = self.transcription_manager.source_lang
         return data
     
-    async def activate(self, source_lang: str, target_langs: dict[str, int]={}, connection_manager: ConnectionManager=None, save_transcript:bool =False, public_transcript: bool=False, target_lang: str=None):
+    async def activate(self, host_key: str, source_lang: str, target_langs: dict[str, int]={}, connection_manager: ConnectionManager=None, save_transcript: bool=False, public_transcript: bool=False, target_lang: str=None):
         LOGGER.info(f'Activating room <{self.id}>')
         self.active = True
-        self.save_transcript = save_transcript
-        self.public_transcript = public_transcript
         if self._deactivation_task:
             self._deactivation_task.cancel() # Cancel room deactivation
             self._deactivation_task = None
 
-        self.transcription_manager = TranscriptionManager(self.id, source_lang, save_transcript=save_transcript)
+        self.transcription_manager = TranscriptionManager(
+            host_key, self.id, source_lang,
+            save_transcript=save_transcript,
+            public_transcript=public_transcript
+        )
+        
         self._room_process = RoomProcess(self.id, source_lang)
         self.translation_worker = TranslationWorker(
             self.transcription_manager,
@@ -140,7 +141,13 @@ class Room:
 
         LOGGER.warning(f'Restarting backend for room <{self.id}>...')
         await self.cancel()
-        await self.activate(source_lang, target_langs, self.connection_manager) # Preserves ws connections across restart
+        await self.activate(
+            self.transcription_manager.host_key,
+            source_lang, target_langs,
+            self.connection_manager, # Preserves ws connections across restart
+            self.transcription_manager.save_transcript,
+            self.transcription_manager.public_transcript
+        )
         return True
     
     async def handle_host_signal(self, signal: str):

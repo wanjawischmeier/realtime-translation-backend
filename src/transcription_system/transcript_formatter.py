@@ -15,7 +15,17 @@ def format_time(seconds: int) -> str:
     s = seconds % 60
     return f"{h:02d}:{m:02d}:{s:02d}"
 
-def get_available_transcript_directories(root_path: str) -> list[dict]:
+def has_access(key: str, dir: str) -> bool:
+    conf_path = os.path.join(dir, 'access.conf')
+    if os.path.isfile(conf_path):
+        # Access is restricted to user in the file
+        with open(conf_path, 'r') as conf_file:
+            authorized_key = conf_file.read()
+            return key == authorized_key
+    
+    return True
+
+def get_available_transcript_directories(root_path: str, key: str) -> list[dict]:
     """
     Returns list of respective room infos for every immediate subdirectory in the root path.
     """
@@ -26,17 +36,20 @@ def get_available_transcript_directories(root_path: str) -> list[dict]:
         raise NotADirectoryError(f"Path is not a directory: {root_path}")
 
     results = []
-    for name in os.listdir(root_path):
-        dir_path = os.path.join(root_path, name)
-        if os.path.isdir(dir_path) and os.listdir(dir_path):
+    for room_id in os.listdir(root_path):
+        room_transcript_directory = os.path.join(root_path, room_id)
+        if os.path.isdir(room_transcript_directory) and os.listdir(room_transcript_directory):
+            if not has_access(key, room_transcript_directory):
+                continue
+            
             try:
-                results.append(room_manager.pretalx.get_event_by_id(name))
+                results.append(room_manager.pretalx.get_event_by_id(room_id))
             except APIError:
-                LOGGER.warning(f"Couldn't find event data for transcript with id {name}")
+                LOGGER.warning(f"Couldn't find event data for transcript with id {room_id}")
     return results
 
-def get_available_transcript_list():
-    return get_available_transcript_directories(TRANSCRIPT_DB_DIRECTORY)
+def get_available_transcript_list(key: str):
+    return get_available_transcript_directories(TRANSCRIPT_DB_DIRECTORY, key)
 
 def get_transcript_from_file(transcript_db_path: str, lang: str) -> str:
     if not os.path.exists(transcript_db_path):
@@ -111,11 +124,15 @@ def compile_transcript_from_dir(transcript_dir: str, lang: str) -> str:
     LOGGER.info(f'Compiled transcript from {len(compiled_chunks)} chunks in {transcript_dir}')
     return "\n".join(compiled_chunks)
 
-def compile_transcript_from_room_id(room_id: str, lang: str) -> str:
-    transcript_dir = os.path.join(TRANSCRIPT_DB_DIRECTORY, room_id)
-    if not os.path.isdir(transcript_dir):
-        LOGGER.warning(f'Unable to compile transcript, no chunks found for room <{room_id}>')
+def compile_transcript_from_room_id(key: str, room_id: str, lang: str) -> str:
+    room_directory = os.path.join(TRANSCRIPT_DB_DIRECTORY, room_id)
+    if not os.path.isdir(room_directory):
+        LOGGER.warning(f'Unable to compile transcript: No chunks found for room <{room_id}>')
+        return 
+    
+    if not has_access(key, room_directory):
+        LOGGER.warning(f'Unable to compile transcript: Denied access to room <{room_id}>')
         return
     
-    return compile_transcript_from_dir(transcript_dir, lang)
+    return compile_transcript_from_dir(room_directory, lang)
     

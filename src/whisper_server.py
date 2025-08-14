@@ -98,18 +98,27 @@ async def validate_key(request: Request):
         return JSONResponse({"status": "valid"}, status_code=200)
     else:
         return JSONResponse({"status": "fail"}, status_code=503)
-        
+
 @app.get("/room_list")
 async def get_room_list():
     return JSONResponse(room_manager.get_room_list())
 
-@app.get("/transcript_list")
-async def get_transcript_list():
-    return JSONResponse(get_available_transcript_list())
+@app.post("/transcript_list")
+async def get_transcript_list(request: Request):
+    body = await request.json()
+    key = body.get("key")
+    
+    return JSONResponse(get_available_transcript_list(key))
 
-@app.get("/room/{room_id}/transcript/{target_lang}")
-async def get_transcript_for_room(room_id: str, target_lang: str):
-    return PlainTextResponse(compile_transcript_from_room_id(room_id, target_lang))
+@app.post("/room/{room_id}/transcript/{target_lang}")
+async def get_transcript_for_room(request: Request, room_id: str, target_lang: str):
+    body = await request.json()
+    key = body.get("key")
+    compiled_transcript = compile_transcript_from_room_id(key, room_id, target_lang)
+    if not compiled_transcript:
+        return JSONResponse({"status": "fail"}, status_code=503)
+    
+    return PlainTextResponse(compiled_transcript)
 
 @app.post("/room/{room_id}/close")
 async def request_close_room(request: Request, room_id: str):
@@ -153,16 +162,20 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         allow_store_cookie = f'{room_id}-allow_store'
         allow_client_download_cookie = f'{room_id}-allow_client_download'
         if ngrok_url == websocket.headers.get('origin'): # TODO: remove ngrok bypass
-            allow_store = True
-            allow_client_download = True
+            save_transcript = True
+            public_transcript = True
         elif not (allow_store_cookie in websocket.cookies and allow_client_download_cookie in websocket.cookies):
             await websocket.close(code=1003, reason='Required room config cookies not found')
             return
         else:
-            allow_store = websocket.cookies[allow_store_cookie] == 'true'
-            allow_client_download = websocket.cookies[allow_client_download_cookie] == 'true'
+            save_transcript = websocket.cookies[allow_store_cookie] == 'true'
+            public_transcript = websocket.cookies[allow_client_download_cookie] == 'true'
             
-        await room_manager.activate_room_as_host(websocket, room_id, source_lang, target_lang, allow_store)
+        await room_manager.activate_room_as_host(
+            websocket, key, room_id,
+            source_lang, target_lang,
+            save_transcript, public_transcript
+        )
     else:   # role == 'client'
         await room_manager.join_room_as_client(websocket, room_id, target_lang)
 
