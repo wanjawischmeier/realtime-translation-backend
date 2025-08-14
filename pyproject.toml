@@ -29,6 +29,7 @@ mosestokenizer = "^1.2.1"
 nltk = "^3.9.1"
 whisperlivekit = {git = "https://github.com/substratoo/WhisperLiveKit.git", rev = "main"}
 aioprocessing = "^2.0.1"
+fastapi = "^0.116.1"
 
 
 [build-system]
