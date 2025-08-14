@@ -152,12 +152,16 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
         
         allow_store_cookie = f'{room_id}-allow_store'
         allow_client_download_cookie = f'{room_id}-allow_client_download'
-        if not (allow_store_cookie in websocket.cookies and allow_client_download_cookie in websocket.cookies):
+        if ngrok_url == websocket.headers.get('origin'): # TODO: remove ngrok bypass
+            allow_store = True
+            allow_client_download = True
+        elif not (allow_store_cookie in websocket.cookies and allow_client_download_cookie in websocket.cookies):
             await websocket.close(code=1003, reason='Required room config cookies not found')
             return
+        else:
+            allow_store = websocket.cookies[allow_store_cookie] == 'true'
+            allow_client_download = websocket.cookies[allow_client_download_cookie] == 'true'
             
-        allow_store = websocket.cookies[allow_store_cookie] == 'true'
-        allow_client_download = websocket.cookies[allow_client_download_cookie] == 'true'
         await room_manager.activate_room_as_host(websocket, room_id, source_lang, target_lang, allow_store)
     else:   # role == 'client'
         await room_manager.join_room_as_client(websocket, room_id, target_lang)
