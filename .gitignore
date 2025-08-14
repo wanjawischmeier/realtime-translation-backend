@@ -10,6 +10,5 @@
 /transcripts_db
 
 poetry.toml
-poetry.lock
 .python-version
 .idea

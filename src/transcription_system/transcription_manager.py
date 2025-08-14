@@ -15,7 +15,7 @@ from transcription_system.sentence_tokenizer import punkt_language_map, sent_tok
 
 class TranscriptionManager:
     def __init__(self, room_id, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs", compare_depth=10, num_sentences_to_broadcast=20,
-                 save_transcript: bool=False):
+                 save_transcript: bool=False, public_transcript: bool=False):
         
         self.save_transcript = save_transcript
         if not source_lang in punkt_language_map:
