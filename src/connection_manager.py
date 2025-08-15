@@ -97,10 +97,12 @@ class ConnectionManager:
         self.host_id = ''
         
     async def disconnect_all(self):
-        await self._host.close(code=1003, reason='Room closed by an admin')
-        self._host = None
+        if self._host:
+            await self._host.close(code=1003, reason='Room closed')
+            self._host = None
+        
         for client in self._clients:
-            await client.close('Room closed by an admin')
+            await client.close(code=1003, reason='Room closed')
         
         self._clients = []
         
@@ -114,9 +116,10 @@ class ConnectionManager:
             while True:
                 await client.receive() # Just to check connection, not actually expecting data
         except (WebSocketDisconnect, RuntimeError):
-            self._clients.remove(client)
+            if client in self._clients:
+                self._clients.remove(client)
             self.translation_worker.unsubscribe_target_lang(target_lang)
-            LOGGER.info(f'Client {len(self._clients) + 1} disconnected in room <{self._room_id}>') # TODO: fix recognition of client detection
+            LOGGER.info(f'Client {len(self._clients) + 1} disconnected in room <{self._room_id}>')
     
     async def ready_to_recieve_audio(self, host: WebSocket=None):
         """
@@ -152,8 +155,6 @@ class ConnectionManager:
                     LOGGER.info(f'Removing dead client {len(self._clients)} in room <{self._room_id}>')
                     self._clients.remove(client)
         
-        for client in self._clients: # TODO: implement this in the frontend?
-            await client.send_json({'type': 'ready_to_stop'})
         LOGGER.info(f'Results generator closed in room <{self._room_id}>')
         self._transcript_generator_handler_task.cancel() # TODO: check if this is necessary/working
 

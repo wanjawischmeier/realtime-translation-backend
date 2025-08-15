@@ -2,8 +2,9 @@ import threading
 import time
 
 from libretranslatepy import LibreTranslateAPI
-from requests import HTTPError
+from urllib.error import HTTPError
 
+from io_config.cli import BACKLOG_SIZE
 from io_config.config import LT_HOST, LT_PORT
 from io_config.logger import LOGGER
 from transcription_system.transcription_manager import TranscriptionManager
@@ -53,7 +54,7 @@ class TranslationWorker(threading.Thread):
             cycle_start = time.time()
             
             # Check translation queue of transcription manager
-            to_translate = self._transcription_manager.poll_sentences_to_translate()
+            to_translate = self._transcription_manager.poll_sentences_to_translate(max_backlog=BACKLOG_SIZE)
 
             for target_lang in self.target_langs.keys():
                 translation_results = []

@@ -18,6 +18,7 @@ def get_args() -> Namespace:
     cli.add_argument("-log", "--log-level", default="info", dest='loglevel', type=str, help='Set the log level, defaults to info', choices=['debug', 'error'], action='store', nargs='?')
     cli.add_argument("--log-transcripts", dest='log_transcripts', action="store_true", help='Writes all ongoing transcriptions to human readable log files in /logs for debugging')
     cli.add_argument("-t", "--timeout", type=int, default=10, dest='timeout', help="Timeout in seconds for audio inactivity")
+    cli.add_argument("--backlog-size", type=int, default=20, dest='backlog_size', help="Number of sentences to keep in the backlog")
     # Show help if no argument specified
     if len(sys.argv) <= 1:
         sys.argv.append('--help')
@@ -36,9 +37,10 @@ BUFFER_TRIMMING: Final[str] = ARGS.buffer_trimming
 MIN_CHUNK_SIZE: Final[int] = ARGS.min_chunk_size
 VAC_CHUNK_SIZE: Final[int] = ARGS.vac_chunk_size # TODO: 1 is significantly larger than the default 0.04, is this fine?
 TIMEOUT: Final[int] = ARGS.timeout # TODO: were is this used?
+BACKLOG_SIZE: Final[int] = ARGS.backlog_size
 LOGLEVEL: Final[str] = ARGS.loglevel
 LOG_TRANSCRIPTS: Final[bool] = ARGS.log_transcripts
 
 # Lightweight dev args: --model tiny
-# Production args: --model medium --vac --buffer_trimming sentence --min-chunk-size 1 --vac-chunk-size 1 --device cuda --compute-type float32
+# Production args: poetry run python src/whisper_server.py --model medium -vac --buffer_trimming sentence --min-chunk-size 1 --vac-chunk-size 1 --device cuda --compute-type float32
 # To download a model: poetry run whisperlivekit-server --model <model>

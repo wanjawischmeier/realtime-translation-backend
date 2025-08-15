@@ -31,8 +31,8 @@ endpoints:
   - `GET /health`: Health check, returns [status](#health-check)
   - `POST /auth`: Checks password, returns [result](#auth-check)
   - `GET /room_list`: Returns a [room list](#room-list)
-  - `GET /transcript_list`: Returns a list of [transcript infos](#transcript-infos)
-  - `GET /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang` as a string. Joins all partial transcripts available for that room.
+  - `POST /transcript_list`: Returns a list of [transcript infos](#transcript-infos)
+  - `POST /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang` as a string. Joins all partial transcripts available for that room.
   - `POST /room/{room_id}/close`: Closes that room, can only be performed with admin password.
 - `ws://localhost:8000/room/{room_id}/{role}/{source_lang}/{target_lang}`
   - FastAPI websocket for handling streaming
@@ -199,6 +199,8 @@ docker compose up -d
     - Very rare, have not been able to pin it down
     - Is maybe fine for now as rooms can be restarted
   - [x] Preserve source lang across host reconnects
+  - [x] Everyone should get kicked out of room if it closes
+  - [ ] Fix host disconnect after long time
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
@@ -211,7 +213,7 @@ docker compose up -d
     - Available as [transcript info](#transcript-infos) at [/transcript_list](#endpoints)
     - [x] Also store and provide room metadata alongside (@whoami)
     - [x] Respect user preferences on wether to store transcripts (@substatoo)
-    - [ ] Respect user preferences on wether clients can download transcripts (@substatoo)
+    - [x] Respect user preferences on wether clients can download transcripts (@substatoo)
 - [ ] (Pause fetch loop when connected host is not streaming?)
 - [x] Respect whisper instance limit when activating rooms
 - [x] Whisper `device, compute_type` passthrough to cli from custom WhisperLiveKit fork
@@ -238,3 +240,4 @@ docker compose up -d
   - [x] Ability to force close rooms as admin
 - [ ] Help markdown file (@whoami)
 - [ ] Ending process does not work properly some threads seems to stay running
+- [x] Translation worker should only try to fetch the most recent n sentences (in reverse order, so most recent first)

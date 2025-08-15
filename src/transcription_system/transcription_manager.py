@@ -4,7 +4,8 @@ import pickle
 import threading
 from datetime import datetime
 
-from io_config.cli import LOG_TRANSCRIPTS
+from io_config.cli import LOG_TRANSCRIPTS, BACKLOG_SIZE
+from io_config.config import TRANSCRIPT_DB_DIRECTORY
 from io_config.logger import LOGGER
 from rolling_average import RollingAverage
 from transcription_system.transcription_helper import filter_complete_sentences, get_last_n_sentences, time_str_to_seconds
@@ -14,29 +15,39 @@ from transcription_system.sentence_tokenizer import punkt_language_map, sent_tok
 
 
 class TranscriptionManager:
-    def __init__(self, room_id, source_lang: str, transcripts_db_directory="transcripts_db", log_directory="logs", compare_depth=10, num_sentences_to_broadcast=20,
+    def __init__(self, host_key: str, room_id: str, source_lang: str, log_directory="logs", compare_depth=10,
                  save_transcript: bool=False, public_transcript: bool=False):
         
         self.save_transcript = save_transcript
+        self.public_transcript = public_transcript
         if not source_lang in punkt_language_map:
             raise ValueError(f"NLTK sentence tokenizer not compatible with source_lang: {punkt_language_map}.")
 
         if save_transcript:
-            transcripts_db_directory = f"{transcripts_db_directory}/{room_id}"
-            if not os.path.exists(transcripts_db_directory):
-                os.makedirs(transcripts_db_directory)
+            self._room_directory = os.path.join(TRANSCRIPT_DB_DIRECTORY, room_id)
+            if not os.path.exists(self._room_directory):
+                os.makedirs(self._room_directory)
             if not os.path.exists(log_directory):
                 os.mkdir(log_directory)
+        
+            # Existence of access.conf marks that access is restricted to one user
+            conf_path = os.path.join(self._room_directory, 'access.conf')
+            if not public_transcript:
+                with open(conf_path, 'w') as conf_file:
+                    conf_file.write(host_key)
+            elif os.path.isfile(conf_path):
+                os.remove(conf_path)
+        else:
+            self._room_directory: str = None
 
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-        self._transcript_db_path = f"{transcripts_db_directory}/{timestamp}.pkl"
+        self._open_time = datetime.now().strftime("%Y-%m-%d_%H-%M")
         self.log_directory = log_directory
+        self.host_key = host_key
         self.room_id = room_id
         self.log_path = f'{log_directory}/to_translate_{self.room_id}.txt'
         self.compare_depth = compare_depth
         self.source_lang = source_lang
         self._punkt_lang = punkt_language_map.get(source_lang)
-        self._num_sentences_to_broadcast = num_sentences_to_broadcast
         self.last_transcript_chunk = {
             'last_n_sents': [],
             'incomplete_sentence': '',
@@ -224,7 +235,7 @@ class TranscriptionManager:
     
     def _push_updated_transcript(self, broadcast=True):
         # send last n lines of updated transcript to all connected clients
-        last_n_sents = get_last_n_sentences(self._lines, self._num_sentences_to_broadcast)
+        last_n_sents = get_last_n_sentences(self._lines, BACKLOG_SIZE)
         self.last_transcript_chunk = {
             'last_n_sents': last_n_sents,
             'incomplete_sentence': self._incomplete_sentence,
@@ -248,13 +259,14 @@ class TranscriptionManager:
 
         # write changes to disk
         if self.save_transcript:
-            with open(self._transcript_db_path, 'wb') as pkl_file:
+            transcript_db = os.path.join(self._room_directory, f'{self._open_time}.pkl')
+            with open(transcript_db, 'wb') as pkl_file:
                 pickle.dump(self._lines, pkl_file)
 
-    def poll_sentences_to_translate(self):
+    def poll_sentences_to_translate(self, max_backlog: int):
         with self.lock:
-            # Return the list as-is
-            return self._to_translate
+            # Take last `max_backlog` items and reverse them
+            return self._to_translate[-max_backlog:][::-1]
 
     def _add_to_translation_queue(self, line_idx, sent_idx, sentence):
         # Find existing entry for this (line_idx, sent_idx)

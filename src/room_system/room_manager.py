@@ -33,7 +33,7 @@ class RoomManager:
                 presenter, event['do_not_record'])
             self.current_rooms.append(room)
     
-    async def activate_room_as_host(self, host: WebSocket, room_id:str, source_lang:str, target_lang: str, save_transcript: bool):
+    async def activate_room_as_host(self, host: WebSocket, host_key: str, room_id:str, source_lang:str, target_lang: str, save_transcript: bool, public_transcript: bool):
         room = self.get_room(room_id)
         if not room:
             await host.close(code=1003, reason=f'Room <{room_id}> not found')
@@ -69,7 +69,11 @@ class RoomManager:
                 return
 
             self._active_room_count += 1
-            await room.activate(source_lang, target_lang=target_lang, save_transcript=save_transcript)
+            await room.activate(
+                host_key, source_lang, target_lang=target_lang,
+                save_transcript=save_transcript,
+                public_transcript=public_transcript
+            )
 
         LOGGER.info(f'Attempting to start listening for host in room <{room_id}>...')
         await room.connection_manager.listen_to_host(host, target_lang)
@@ -113,7 +117,7 @@ class RoomManager:
         
         LOGGER.info(f'Deactivating room <{room_id}> based on direct request')
         self._active_room_count = max(0, self._active_room_count - 1)
-        await room.deactivate(disconnect=True)
+        await room.deactivate()
         return True
 
     def get_room_list(self):
