@@ -14,7 +14,7 @@ def get_args() -> Namespace:
     cli.add_argument("-vac", "--voice-activity-controller", dest='vac', action="store_true", help="Enable voice activity controller")
     cli.add_argument("-b", "--buffer-trimming", default='sentence', dest="buffer_trimming", help="Buffer trimming algorithm")
     cli.add_argument("--min-chunk-size", type=float, default=1, dest="min_chunk_size", help="Minimum chunk size")
-    cli.add_argument("--vac-chunk-size", type=float, default=1, dest="vac_chunk_size", help="Vac chunk size")
+    cli.add_argument("--vac-chunk-size", type=float, dest="vac_chunk_size", help="Vac chunk size")
     cli.add_argument("-log", "--log-level", default="info", dest='loglevel', type=str, help='Set the log level, defaults to info', choices=['debug', 'error'], action='store', nargs='?')
     cli.add_argument("--log-transcripts", dest='log_transcripts', action="store_true", help='Writes all ongoing transcriptions to human readable log files in /logs for debugging')
     cli.add_argument("-t", "--timeout", type=int, default=10, dest='timeout', help="Timeout in seconds for audio inactivity")
@@ -35,7 +35,7 @@ DIARIZATION: Final[bool] = ARGS.diarization
 VAC: Final[bool] = ARGS.vac
 BUFFER_TRIMMING: Final[str] = ARGS.buffer_trimming
 MIN_CHUNK_SIZE: Final[float] = ARGS.min_chunk_size
-VAC_CHUNK_SIZE: Final[float] = ARGS.vac_chunk_size # TODO: 1 is significantly larger than the default 0.04, is this fine?
+VAC_CHUNK_SIZE: Final[float] = ARGS.vac_chunk_size
 TIMEOUT: Final[int] = ARGS.timeout # TODO: were is this used?
 BACKLOG_SIZE: Final[int] = ARGS.backlog_size
 LOGLEVEL: Final[str] = ARGS.loglevel
