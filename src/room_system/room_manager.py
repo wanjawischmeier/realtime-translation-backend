@@ -28,7 +28,8 @@ class RoomManager:
             persons = event['persons']
             if persons: # Some rooms leave this as an empty list
                 presenter = persons[0]['name']
-            
+            if event['do_not_record']:
+                continue
             room = Room(event['code'], event['title'], event['track'], event['room'], event['url'], event['description'],
                 presenter, event['do_not_record'])
             self.current_rooms.append(room)
@@ -40,10 +41,11 @@ class RoomManager:
         except RoomNotFoundError:
             await host.close(code=1003, reason=f'Room <{room_id}> not found')
             return
-        
-        if room.do_not_record:
-            await host.close(code=1003, reason=f'Audio recording not allowed in room <{room_id}>')
-            return
+
+        # Should be obsolete
+   #     if room.do_not_record:
+    #        await host.close(code=1003, reason=f'Audio recording not allowed in room <{room_id}>')
+     #       return
         
         if not source_lang in AVAILABLE_WHISPER_LANGS:
             await host.close(code=1003, reason=f'Source language {source_lang} not supported by transcription engine')
