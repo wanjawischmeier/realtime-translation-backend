@@ -245,3 +245,4 @@ docker compose up -d
 - [ ] Fix: Multiple hosts not allowed error
   - Very rare, have not been able to pin it down
   - Is maybe fine for now as rooms can be restarted
+- [ ] Convert pickle files for transcripts into conventional database implementation
