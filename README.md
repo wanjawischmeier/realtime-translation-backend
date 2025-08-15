@@ -199,6 +199,7 @@ docker compose up -d
     - Very rare, have not been able to pin it down
     - Is maybe fine for now as rooms can be restarted
   - [x] Preserve source lang across host reconnects
+  - [x] Everyone should get kicked out of room if it closes
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it

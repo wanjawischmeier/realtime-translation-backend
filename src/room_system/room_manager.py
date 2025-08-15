@@ -117,7 +117,7 @@ class RoomManager:
         
         LOGGER.info(f'Deactivating room <{room_id}> based on direct request')
         self._active_room_count = max(0, self._active_room_count - 1)
-        await room.deactivate(disconnect=True)
+        await room.deactivate()
         return True
 
     def get_room_list(self):

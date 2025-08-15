@@ -97,10 +97,12 @@ class ConnectionManager:
         self.host_id = ''
         
     async def disconnect_all(self):
-        await self._host.close(code=1003, reason='Room closed by an admin')
-        self._host = None
+        if self._host:
+            await self._host.close(code=1003, reason='Room closed')
+            self._host = None
+        
         for client in self._clients:
-            await client.close('Room closed by an admin')
+            await client.close(code=1003, reason='Room closed')
         
         self._clients = []
         
