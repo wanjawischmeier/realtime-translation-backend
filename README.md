@@ -195,9 +195,6 @@ docker compose up -d
   - [x] Unique host id
   - [x] Fix: Client disconnects dont get recognized correctly
   - [x] Fix: Rooms get prematurely closed upon host reconnects
-  - [ ] Fix: Multiple hosts not allowed error
-    - Very rare, have not been able to pin it down
-    - Is maybe fine for now as rooms can be restarted
   - [x] Preserve source lang across host reconnects
   - [x] Everyone should get kicked out of room if it closes
   - [ ] Fix host disconnect after long time
@@ -214,7 +211,6 @@ docker compose up -d
     - [x] Also store and provide room metadata alongside (@whoami)
     - [x] Respect user preferences on wether to store transcripts (@substatoo)
     - [x] Respect user preferences on wether clients can download transcripts (@substatoo)
-- [ ] (Pause fetch loop when connected host is not streaming?)
 - [x] Respect whisper instance limit when activating rooms
 - [x] Whisper `device, compute_type` passthrough to cli from custom WhisperLiveKit fork
   - https://github.com/substratoo/WhisperLiveKit
@@ -239,5 +235,12 @@ docker compose up -d
 - [x] Add admin acc
   - [x] Ability to force close rooms as admin
 - [ ] Help markdown file (@whoami)
-- [ ] Ending process does not work properly some threads seems to stay running
 - [x] Translation worker should only try to fetch the most recent n sentences (in reverse order, so most recent first)
+
+## For potential future updates
+- [ ] Fix: Ending process does not work properly some threads seems to stay running
+  - Fix CTRL-C
+- [ ] (Pause fetch loop when connected host is not streaming?)
+- [ ] Fix: Multiple hosts not allowed error
+  - Very rare, have not been able to pin it down
+  - Is maybe fine for now as rooms can be restarted
