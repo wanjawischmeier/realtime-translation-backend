@@ -3,10 +3,11 @@ from typing import Final
 import requests
 import yaml
 
-from io_config.cli import CONFIG_FILE
+from io_config.cli import CONFIG_FILE, ARGS
 from io_config.logger import LOGGER
 
 # get Config from yml file
+LOGGER.info(f"Running with Arguments: \n {ARGS}")
 LOGGER.debug('Loading config file...')
 try:
     with open(CONFIG_FILE, 'r') as f:
@@ -34,6 +35,7 @@ CLOSE_ROOM_AFTER_SECONDS: Final[int] = CONFIG['whisper']['close_room_after_secon
 LT_HOST: Final[str] = CONFIG['libretranslate']['host']
 LT_PORT: Final[int] = CONFIG['libretranslate']['port']
 LT_LANGS: Final[str] = CONFIG['libretranslate']['langs']
+
 def get_available_languages():
     # Get Available Languages from libretranslate.com
     LOGGER.info(f"Getting available languages from {LT_LANGS}...")
