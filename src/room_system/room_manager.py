@@ -15,9 +15,9 @@ class RoomManager:
 
     def get_room(self, room_id: str) -> Room:
         for room in self.current_rooms:
-            if room_id != room.id:
-                continue
-            return room
+            if room_id == room.id:
+                return room
+        raise RoomNotFoundError(f"Room with id {room_id} not found in room_list {[r.id for r in self.current_rooms]}")
 
     def update_rooms(self):
         if not conference.update_ongoing_events() and self.current_rooms != []:
@@ -35,8 +35,9 @@ class RoomManager:
         return True
     
     async def activate_room_as_host(self, host: WebSocket, host_key: str, room_id:str, source_lang:str, target_lang: str, save_transcript: bool, public_transcript: bool):
-        room = self.get_room(room_id)
-        if not room:
+        try:
+            room = self.get_room(room_id)
+        except RoomNotFoundError:
             await host.close(code=1003, reason=f'Room <{room_id}> not found')
             return
         
@@ -133,4 +134,11 @@ class RoomManager:
             'rooms': rooms
         }
 
+# ---- INITIALIZE SINGLETON ----
 room_manager = RoomManager()
+
+# ------ CUSTOM EXCEPTIONS -----
+class RoomNotFoundError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
