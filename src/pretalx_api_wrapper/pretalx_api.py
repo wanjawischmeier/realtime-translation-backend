@@ -36,13 +36,3 @@ class APIError(Exception):
 
 # ---- INITIALIZE SINGLETON ----
 pretalx = PretalxAPI()
-
-"""
-# Usage Example
-pretalx = PretalxAPI()
-print(pretalx.conference.__dict__)
-pretalx.get_ongoing_events(fake_now='2025-08-20T16:00:00+02:00')
-[print(e) for e in pretalx.ongoing_events]
-print(pretalx.get_event_by_id("ECUGNH"))
-"""
-
