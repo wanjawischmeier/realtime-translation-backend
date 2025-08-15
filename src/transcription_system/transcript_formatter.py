@@ -1,11 +1,12 @@
-from datetime import datetime
 import os
 import pickle
+from datetime import datetime
 from typing import Any
 
-from io_config.logger import LOGGER
 from io_config.config import TRANSCRIPT_DB_DIRECTORY
-from pretalx_api_wrapper.conference import conference, EventNotFoundError
+from io_config.logger import LOGGER
+from pretalx_api_wrapper.conference import CONFERENCE, EventNotFoundError
+
 
 def format_time(seconds: int) -> str:
     """Convert seconds to HH:MM:SS format."""
@@ -41,7 +42,7 @@ def get_available_transcript_directories(root_path: str, key: str) -> list[dict]
             if not has_access(key, room_transcript_directory):
                 continue
             try:
-                results.append(conference.get_event_by_id(room_id))
+                results.append(CONFERENCE.get_event_by_id(room_id))
             except EventNotFoundError:
                 LOGGER.error(f"Couldn't find event data for transcript with id {room_id}")
     return results

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from io_config.config import ADMIN_PASSWORD, LT_HOST, LT_PORT, API_HOST, API_PORT
 from io_config.logger import LOGGER
-from room_system.room_manager import room_manager
+from room_system.room_manager import ROOM_MANAGER
 from transcription_system.transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
 from auth_manager import auth_manager
 
@@ -101,7 +101,7 @@ async def validate_key(request: Request):
 
 @app.get("/room_list")
 async def get_room_list():
-    return JSONResponse(room_manager.get_room_list())
+    return JSONResponse(ROOM_MANAGER.get_room_list())
 
 @app.post("/transcript_list")
 async def get_transcript_list(request: Request):
@@ -128,7 +128,7 @@ async def request_close_room(request: Request, room_id: str):
         LOGGER.info(f"Failed to close room <{room_id}>: Incorrect admin password")
         return JSONResponse({"status": "fail"}, status_code=503)
     
-    if not await room_manager.deactivate_room(room_id):
+    if not await ROOM_MANAGER.deactivate_room(room_id):
         LOGGER.info(f"Failed to close room <{room_id}>: Failed to deactivate")
         return JSONResponse({"status": "fail"}, status_code=503)
         
@@ -171,13 +171,13 @@ async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_
             save_transcript = websocket.cookies[allow_store_cookie] == 'true'
             public_transcript = websocket.cookies[allow_client_download_cookie] == 'true'
             
-        await room_manager.activate_room_as_host(
+        await ROOM_MANAGER.activate_room_as_host(
             websocket, key, room_id,
             source_lang, target_lang,
             save_transcript, public_transcript
         )
     else:   # role == 'client'
-        await room_manager.join_room_as_client(websocket, room_id, target_lang)
+        await ROOM_MANAGER.join_room_as_client(websocket, room_id, target_lang)
 
 if __name__ == "__main__":
     import uvicorn

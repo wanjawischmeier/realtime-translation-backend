@@ -3,7 +3,7 @@ from fastapi import WebSocket
 from io_config.config import AVAILABLE_WHISPER_LANGS, CLOSE_ROOM_AFTER_SECONDS, MAX_WHISPER_INSTANCES, \
     AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
-from pretalx_api_wrapper.conference import conference
+from pretalx_api_wrapper.conference import CONFERENCE
 from room_system.room import Room
 
 
@@ -20,10 +20,10 @@ class RoomManager:
         raise RoomNotFoundError(f"Room with id {room_id} not found in room_list {[r.id for r in self.current_rooms]}")
 
     def update_rooms(self):
-        if not conference.update_ongoing_events() and self.current_rooms != []:
+        if not CONFERENCE.update_ongoing_events() and self.current_rooms != []:
             return False
         self.current_rooms.clear()
-        for event in conference.ongoing_events:
+        for event in CONFERENCE.ongoing_events:
             presenter = 'Unknown'
             persons = event['persons']
             if persons: # Some rooms leave this as an empty list
@@ -132,7 +132,7 @@ class RoomManager:
         }
 
 # ---- INITIALIZE SINGLETON ----
-room_manager = RoomManager()
+ROOM_MANAGER = RoomManager()
 
 # ------ CUSTOM EXCEPTIONS -----
 class RoomNotFoundError(Exception):

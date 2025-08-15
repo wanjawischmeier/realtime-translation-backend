@@ -35,4 +35,4 @@ class APIError(Exception):
         super().__init__(self.message)
 
 # ---- INITIALIZE SINGLETON ----
-pretalx = PretalxAPI()
+PRETALX = PretalxAPI()

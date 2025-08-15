@@ -5,7 +5,7 @@ import dateutil
 
 from io_config.config import FILTER_TRACKS, FAKE_NOW
 from io_config.logger import LOGGER
-from pretalx_api_wrapper.pretalx_api import pretalx
+from pretalx_api_wrapper.pretalx_api import PRETALX
 
 
 class Track:
@@ -74,8 +74,8 @@ class Conference:
         LOGGER.debug("Searching ongoing_events...")
         if self.ongoing_cache > datetime.now(self.timezone) and self.ongoing_events != []:
             return False
-        if pretalx.update_data():
-            self.update(pretalx.data['conference'], pretalx.data['url'])
+        if PRETALX.update_data():
+            self.update(PRETALX.data['conference'], PRETALX.data['url'])
         self.ongoing_events = []
         for event in self.all_events:
             # Filter Tracks that are specified in config
@@ -89,7 +89,7 @@ class Conference:
 
 
 # ---- INITIALIZE SINGLETON ----
-conference = Conference(pretalx.data['conference'], pretalx.data['url'])
+CONFERENCE = Conference(PRETALX.data['conference'], PRETALX.data['url'])
 
 # ----- FILTER LOGIC -----
 
