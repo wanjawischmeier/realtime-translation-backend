@@ -118,6 +118,8 @@ def event_is_ongoing(timezone, event) -> bool:
     else:
         return False
 
+# ----- CUSTOM EXCEPTIONS ------
+
 class EventNotFoundError(Exception):
     def __init__(self, message):
         self.message = message
