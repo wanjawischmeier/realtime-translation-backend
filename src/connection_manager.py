@@ -116,7 +116,8 @@ class ConnectionManager:
             while True:
                 await client.receive() # Just to check connection, not actually expecting data
         except (WebSocketDisconnect, RuntimeError):
-            self._clients.remove(client)
+            if client in self._clients:
+                self._clients.remove(client)
             self.translation_worker.unsubscribe_target_lang(target_lang)
             LOGGER.info(f'Client {len(self._clients) + 1} disconnected in room <{self._room_id}>')
     
