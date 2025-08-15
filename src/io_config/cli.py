@@ -36,7 +36,7 @@ VAC: Final[bool] = ARGS.vac
 BUFFER_TRIMMING: Final[str] = ARGS.buffer_trimming
 MIN_CHUNK_SIZE: Final[float] = ARGS.min_chunk_size
 VAC_CHUNK_SIZE: Final[float] = ARGS.vac_chunk_size
-TIMEOUT: Final[int] = ARGS.timeout # TODO: were is this used?
+TIMEOUT: Final[int] = ARGS.timeout # TODO: were is this used? => Nowhere says PyCharm => Intention seems "Timeout in seconds for audio inactivity"
 BACKLOG_SIZE: Final[int] = ARGS.backlog_size
 LOGLEVEL: Final[str] = ARGS.loglevel
 LOG_TRANSCRIPTS: Final[bool] = ARGS.log_transcripts
