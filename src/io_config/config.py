@@ -1,5 +1,7 @@
+from datetime import datetime
 from typing import Final
 
+import dateutil
 import requests
 import yaml
 
@@ -21,6 +23,8 @@ ADMIN_PASSWORD: Final[str] = CONFIG['admin_password']
 # Pretalx-Section
 JSON_URL: Final[str] = CONFIG['pretalx']['json_url']
 CACHE_TIME: Final[int] = CONFIG['pretalx']['cache_time']
+FILTER_TRACKS: Final[set] = CONFIG['pretalx']['filter_tracks'] if CONFIG['pretalx']['filter_tracks'] != {} else set()
+FAKE_NOW: Final[datetime] = dateutil.parser.isoparse(CONFIG['pretalx']['fake_now']) if CONFIG['pretalx']['fake_now'] != "" else None
 
 # FastAPI-Section
 API_HOST: Final[str] = CONFIG['fastapi']['host']

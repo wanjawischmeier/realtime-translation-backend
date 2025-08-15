@@ -5,6 +5,9 @@ admin_password: "Wasistesdiesmal?"
 pretalx:
   json_url: 'https://programm.infraunited.org/scc-25-2025/schedule/export/schedule.json' # Schedule in JSON-Format
   cache_time: 60 # Caches data from schedule for X minutes
+  # The names of the Tracks that shall not be shown - Leave empty {} to use all tracks - has to be the exact writing!
+  filter_tracks: !!set {"blockiert", "Anderes Format", "Vernetzungs oder Strategieraum", "Performance, Konzert", "Austauschrunde"}
+  fake_now: '2025-08-20T16:00:00+02:00' # Has to be an ISO-8601 datetime string or empty
 
 # FastAPI-Section
 fastapi:
