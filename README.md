@@ -183,6 +183,7 @@ docker compose up -d
 ```
 
 # TODOs
+## Important
 - [x] Whisper Engine an Rauminstanzen binden
 - [x] Räume richtig öffnen/schließen
   - [x] Ein Raum wird geöffnet wenn der Host joint
