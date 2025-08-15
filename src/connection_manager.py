@@ -84,8 +84,8 @@ class ConnectionManager:
                         raise WebSocketDisconnect(data['code'], data['reason'])
                 else:
                     LOGGER.warning(f'Recieved data in unknown format from host of room <{self._room_id}>:\n{data}')
-        except WebSocketDisconnect:
-            LOGGER.info(f'Host disconnected in room <{self._room_id}>')
+        except WebSocketDisconnect as error:
+            LOGGER.info(f'Host disconnected in room <{self._room_id}>\n{error.code}: {error.reason}')
             self.cancel()
             self._host = None
             if target_lang:

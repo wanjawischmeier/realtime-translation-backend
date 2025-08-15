@@ -41,11 +41,6 @@ class RoomManager:
         except RoomNotFoundError:
             await host.close(code=1003, reason=f'Room <{room_id}> not found')
             return
-
-        # Should be obsolete
-   #     if room.do_not_record:
-    #        await host.close(code=1003, reason=f'Audio recording not allowed in room <{room_id}>')
-     #       return
         
         if not source_lang in AVAILABLE_WHISPER_LANGS:
             await host.close(code=1003, reason=f'Source language {source_lang} not supported by transcription engine')
