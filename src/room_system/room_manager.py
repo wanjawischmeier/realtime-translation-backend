@@ -1,14 +1,14 @@
 from fastapi import WebSocket
 
-from pretalx_api_wrapper import PretalxAPI
-from room_system.room import Room
-from io_config.config import AVAILABLE_WHISPER_LANGS, CLOSE_ROOM_AFTER_SECONDS, MAX_WHISPER_INSTANCES, AVAILABLE_LT_LANGS
+from io_config.config import AVAILABLE_WHISPER_LANGS, CLOSE_ROOM_AFTER_SECONDS, MAX_WHISPER_INSTANCES, \
+    AVAILABLE_LT_LANGS
 from io_config.logger import LOGGER
+from pretalx_api_wrapper.conference import conference
+from room_system.room import Room
 
 
 class RoomManager:
-    def __init__(self, pretalx: PretalxAPI):
-        self.pretalx = pretalx
+    def __init__(self):
         self.current_rooms: list[Room] = []
         self._active_room_count = 0
         self.update_rooms()
@@ -17,13 +17,13 @@ class RoomManager:
         for room in self.current_rooms:
             if room_id != room.id:
                 continue
-            
             return room
 
     def update_rooms(self):
-        self.pretalx.get_ongoing_events(fake_now='2025-08-18T14:20:00+02:00') # TODO: remove fakenow in production
+        if not conference.update_ongoing_events() and self.current_rooms != []:
+            return False
         self.current_rooms.clear()
-        for event in self.pretalx.ongoing_events:
+        for event in conference.ongoing_events:
             presenter = 'Unknown'
             persons = event['persons']
             if persons: # Some rooms leave this as an empty list
@@ -32,6 +32,7 @@ class RoomManager:
             room = Room(event['code'], event['title'], event['track'], event['room'], event['url'], event['description'],
                 presenter, event['do_not_record'])
             self.current_rooms.append(room)
+        return True
     
     async def activate_room_as_host(self, host: WebSocket, host_key: str, room_id:str, source_lang:str, target_lang: str, save_transcript: bool, public_transcript: bool):
         room = self.get_room(room_id)
@@ -132,5 +133,4 @@ class RoomManager:
             'rooms': rooms
         }
 
-
-room_manager = RoomManager(pretalx=PretalxAPI())
+room_manager = RoomManager()

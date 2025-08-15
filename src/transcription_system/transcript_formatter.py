@@ -5,7 +5,7 @@ from typing import Any
 
 from io_config.logger import LOGGER
 from io_config.config import TRANSCRIPT_DB_DIRECTORY
-from pretalx_api_wrapper import APIError
+from pretalx_api_wrapper.conference import EventNotFoundError
 from room_system.room_manager import room_manager
 
 def format_time(seconds: int) -> str:
@@ -41,11 +41,10 @@ def get_available_transcript_directories(root_path: str, key: str) -> list[dict]
         if os.path.isdir(room_transcript_directory) and os.listdir(room_transcript_directory):
             if not has_access(key, room_transcript_directory):
                 continue
-            
             try:
                 results.append(room_manager.pretalx.get_event_by_id(room_id))
-            except APIError:
-                LOGGER.warning(f"Couldn't find event data for transcript with id {room_id}")
+            except EventNotFoundError:
+                LOGGER.error(f"Couldn't find event data for transcript with id {room_id}")
     return results
 
 def get_available_transcript_list(key: str):
