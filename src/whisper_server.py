@@ -10,7 +10,7 @@ from io_config.logger import LOGGER
 from room_system.room_manager import ROOM_MANAGER
 from transcription_system.transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
 from auth_manager import auth_manager
-from vote_manager import VOTE_MANAGER
+from vote_manager import VOTE_MANAGER, VoteManager
 
 server_ready = False
 
@@ -107,6 +107,24 @@ async def get_room_list():
 @app.get("/vote")
 async def get_vote_list():
     return JSONResponse(VOTE_MANAGER.get_vote_list())
+
+@app.get("/vote/{event_code}/add")
+async def add_vote_for_room(event_code: str): # event code is the id (event['code'])
+    try:
+        print(event_code)
+        return JSONResponse(VOTE_MANAGER.add_vote(event_code))
+    except IOError: # If it didn't manage to write it to disk
+        return JSONResponse({"status": "fail"}, status_code=503)
+
+@app.get("/vote/{event_code}/remove")
+async def add_vote_for_room(event_code: str): # event code is the id (event['code'])
+    try:
+        return JSONResponse(VOTE_MANAGER.remove_vote(event_code))
+    except ValueError: # If votes were already 0 for this event
+        return JSONResponse({"status": "fail"}, status_code=503)
+    except IOError: # If it didn't manage to write to disk
+        return JSONResponse({"status": "fail"}, status_code=503)
+
 
 @app.post("/transcript_list")
 async def get_transcript_list(request: Request):
