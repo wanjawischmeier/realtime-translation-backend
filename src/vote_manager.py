@@ -1,9 +1,10 @@
 import pickle
-from datetime import timedelta
-
 from pathlib import Path
 from typing import Final
 
+import yaml
+
+from io_config.config import VOTES_DIR
 from io_config.logger import LOGGER
 from pretalx_api_wrapper.conference import CONFERENCE
 
@@ -12,13 +13,13 @@ class VoteManager:
     def __init__(self):
         self.vote_list: list = []
         self.votes: dict[str, int] = {}
-        self.FILE_PREFIX: Final[str] = "votes_"
-        self.votes_file: Path = Path(f"{self.FILE_PREFIX}{CONFERENCE.today}.pkl") # If you see this Path something went wrong
+        self.votes_file: Path = Path(f"{VOTES_DIR}/{CONFERENCE.today}.pkl") # If you see this Path something went wrong
         self.update_vote_list()
 
 # ----- main function keeping votes up to date past system crash -----
     def update_vote_list(self):
         if not CONFERENCE.update_tomorrow_events() and self.vote_list != []: # Only run this at midnight or at system start
+            LOGGER.info("Using cached vote list.")
             return False
         self.vote_list.clear()
         for event in CONFERENCE.tomorrow_events:
@@ -30,9 +31,12 @@ class VoteManager:
             event['persons'] = presenter
             self.vote_list.append(event)
         self.populate_votes()
+        self.write_votes_to_disk()
         return True
 
     def get_vote_list(self):
+        for event in self.vote_list:
+            event['votes'] = self.votes.get(event['code'])
         return self.vote_list
 
 # ----- disk-io ------
@@ -40,25 +44,26 @@ class VoteManager:
         if not self.load_votes_from_disk():
             for event in self.vote_list:
                 self.votes.update({event['code']: 0})
-        self.write_votes_to_disk()
 
     def load_votes_from_disk(self) -> bool:
         if not self.votes_file.is_file(): # If there is no file under this path
-            LOGGER.warning(f"No votes file found at {str(self.votes_file.name)}. Creating a new one.")
+            LOGGER.warning(f"No votes file found at {str(self.votes_file)}. Creating a new one.")
             return False
         else:
             with open(self.votes_file, 'rb') as file:
                 self.votes = pickle.load(file)
-                LOGGER.info(f"Loaded {len(self.votes)} votes from {self.votes_file.name}")
+               # yaml.load(file, Loader=yaml.FullLoader)
+                LOGGER.info(f"Loaded {len(self.votes)} votes from {self.votes_file}")
             return True
 
     def write_votes_to_disk(self):
-        self.votes_file = Path(f"{self.FILE_PREFIX}{CONFERENCE.today}")
+        self.votes_file.with_stem(f"{CONFERENCE.today}").parent.mkdir(parents=True, exist_ok=True)
         try:
             with open(self.votes_file, 'wb') as file:
+              #  yaml.dump(self.votes, file, yaml.Dumper=yaml.SafeDumper)
                 pickle.dump(self.votes, file)
         except IOError:
-            raise IOError(f"Unable to write votes to {self.votes_file.name}")
+            raise IOError(f"Unable to write votes to {self.votes_file}")
 
 # ----- vote endpoints ------
     def add_vote(self, event_code:str) -> int:
