@@ -31,3 +31,4 @@ libretranslate:
 # Data-Section
 data:
   transcript_db_directory: 'transcripts_db'
+  votes_directory: 'votes'

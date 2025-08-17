@@ -52,3 +52,4 @@ AVAILABLE_LT_LANGS: Final[list[str]] = get_available_languages()
 
 # Data-Section
 TRANSCRIPT_DB_DIRECTORY: Final[str] = CONFIG['data']['transcript_db_directory']
+VOTES_DIR: Final[str] = CONFIG['data']['votes_directory']
