@@ -13,20 +13,25 @@ class Track:
         self.name = name
         self.color = color
 
+def calc_today():
+     return FAKE_NOW.date() if FAKE_NOW is not None else date.today()
+
 class Conference:
     def __init__(self, data, url) :
         self.data = data
         self.title = data['title']
-        self.start = data['start']
-        self.end = data['end']
+        self.start = date.fromisoformat(data['start'])
+        self.end = date.fromisoformat(data['end'])
         self.duration = data['daysCount']
+        self.today = calc_today()
         self.url = url
         self.timezone = pytz.timezone(data['time_zone_name'])
         self.colors = data['colors']
         self.tracks = self.filter_tracks()
         self.all_events = self.get_all_events()
+        self.tomorrow_events = [] # filtered by track
         self.ongoing_cache = datetime.now(self.timezone)
-        self.ongoing_events = []
+        self.ongoing_events = [] # filtered by track & time (now + 30min)
 
     def update(self, data, url) -> None:
         self.data = data
@@ -34,6 +39,7 @@ class Conference:
         self.start = data['start']
         self.end = data['end']
         self.duration = data['daysCount']
+        self.today = calc_today()
         self.url = url
         self.timezone = pytz.timezone(data['time_zone_name'])
         self.colors = data['colors']
@@ -46,6 +52,20 @@ class Conference:
             for name, day_events in day['rooms'].items():
                 self.all_events.extend(day_events)
         return self.all_events
+
+    def update_tomorrow_events(self) -> bool:
+        if self.today == datetime.now(self.timezone).date() and self.ongoing_events != []:
+            return False
+        if PRETALX.update_data():
+            self.update(PRETALX.data['conference'], PRETALX.data['url'])
+        self.tomorrow_events = []
+        for day in self.data['days']:
+            if (self.today - self.start).days == (day['index'] - 1):
+                for name, day_events in day['rooms'].items():
+                    self.tomorrow_events.extend(day_events)
+                LOGGER.info(f"Tomorrow events for day {day['index']} (starting {self.start}) updated.")
+                return True
+        raise EventNotFoundError("Tomorrow events not found")
 
     def filter_tracks(self):
         if FILTER_TRACKS is not None:
@@ -71,7 +91,6 @@ class Conference:
 
     def update_ongoing_events(self) -> bool:
         # Returns a list of ongoing events in this conference sorted by time
-        LOGGER.debug("Searching ongoing_events...")
         if self.ongoing_cache > datetime.now(self.timezone) and self.ongoing_events != []:
             return False
         if PRETALX.update_data():
@@ -80,7 +99,7 @@ class Conference:
         for event in self.all_events:
             # Filter Tracks that are specified in config
             # Filter events to only include the ongoing events and those that start in less than 30 minutes
-            if event_in_tracks(self.tracks, event) and event_is_ongoing(self.timezone, event):
+            if event_in_tracks(self.tracks, event) and event_is_ongoing(self.timezone, event, self.today):
                 self.ongoing_events.append(event)
         self.ongoing_events.sort(key=lambda e: dateutil.parser.isoparse(e['date'])) # Sorts list by date
         LOGGER.info(f"Ongoing Events:\n {[e['title'] for e in self.ongoing_events]}")
@@ -101,8 +120,7 @@ def event_in_tracks(tracks, event) -> bool:
             return True
     return False
 
-def event_is_ongoing(timezone, event) -> bool:
-    today = FAKE_NOW.date() if FAKE_NOW is not None else date.today()
+def event_is_ongoing(timezone, event, today) -> bool:
     # Filter Events to today
     if datetime.fromisoformat(event['date']).date() != today:
         return False
