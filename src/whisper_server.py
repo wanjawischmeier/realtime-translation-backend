@@ -10,6 +10,7 @@ from io_config.logger import LOGGER
 from room_system.room_manager import ROOM_MANAGER
 from transcription_system.transcript_formatter import get_available_transcript_list, compile_transcript_from_room_id
 from auth_manager import auth_manager
+from vote_manager import VOTE_MANAGER
 
 server_ready = False
 
@@ -102,6 +103,10 @@ async def validate_key(request: Request):
 @app.get("/room_list")
 async def get_room_list():
     return JSONResponse(ROOM_MANAGER.get_room_list())
+
+@app.get("/vote")
+async def get_vote_list():
+    return JSONResponse(VOTE_MANAGER.get_vote_list())
 
 @app.post("/transcript_list")
 async def get_transcript_list(request: Request):
