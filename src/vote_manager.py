@@ -25,6 +25,8 @@ class VoteManager:
         for event in CONFERENCE.tomorrow_events:
             if event['do_not_record']:
                 continue
+            if event['code'] == "GBH9TR": # Filter Repro & Verantwortungsübernahme
+                continue
             presenter = 'Unknown'
             if event['persons']:  # Some rooms leave this as an empty list
                 presenter = event['persons'][0]['name']
