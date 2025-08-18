@@ -11,7 +11,7 @@ pretalx:
 
 # FastAPI-Section
 fastapi:
-  host: 127.0.0.1 #Host to bind FastAPI server
+  host: 0.0.0.0 #Host to bind FastAPI server
   port: 8000 # Port to bind FastAPI server
 
 # Whisper-Section
