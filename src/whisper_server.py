@@ -39,23 +39,23 @@ async def lifespan(app:FastAPI):
         server_ready = False
 
 app = FastAPI(lifespan=lifespan)
-ngrok_url = "https://30909944add9.ngrok-free.app/"
+ngrok_url = "https://e0beeea7d617.ngrok-free.app"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", ngrok_url],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/health")
+@app.get("/backend/health")
 async def health():
     if server_ready:
         return JSONResponse({"status": "ok"}, status_code=200)
     else:
         return JSONResponse({"status": "not ready"}, status_code=503)
 
-@app.post("/login")
+@app.post("/backend/login")
 async def auth(request: Request):
     body = await request.json()
     password = body.get("password")
@@ -77,7 +77,7 @@ async def auth(request: Request):
             "expire_hours": result["expire_hours"]
         }, status_code=200)
 
-@app.post("/auth")
+@app.post("/backend/auth")
 async def validate_key(request: Request):
     body = await request.json()
     key = body.get("key")
@@ -90,7 +90,7 @@ async def validate_key(request: Request):
     else:
         return JSONResponse({"status": "fail"}, status_code=503)
 
-@app.post("/validate")
+@app.post("/backend/validate")
 async def validate_key(request: Request):
     body = await request.json()
     key = body.get("key")
@@ -100,15 +100,15 @@ async def validate_key(request: Request):
     else:
         return JSONResponse({"status": "fail"}, status_code=503)
 
-@app.get("/room_list")
+@app.get("/backend/room_list")
 async def get_room_list():
     return JSONResponse(ROOM_MANAGER.get_room_list())
 
-@app.get("/vote")
+@app.get("/backend/vote")
 async def get_vote_list():
     return JSONResponse(VOTE_MANAGER.get_vote_list())
 
-@app.get("/vote/{event_code}/add")
+@app.get("/backend/vote/{event_code}/add")
 async def add_vote_for_room(event_code: str): # event code is the id (event['code'])
     try:
         print(event_code)
@@ -116,7 +116,7 @@ async def add_vote_for_room(event_code: str): # event code is the id (event['cod
     except IOError: # If it didn't manage to write it to disk
         return JSONResponse({"status": "fail"}, status_code=503)
 
-@app.get("/vote/{event_code}/remove")
+@app.get("/backend/vote/{event_code}/remove")
 async def add_vote_for_room(event_code: str): # event code is the id (event['code'])
     try:
         return JSONResponse(VOTE_MANAGER.remove_vote(event_code))
@@ -126,14 +126,14 @@ async def add_vote_for_room(event_code: str): # event code is the id (event['cod
         return JSONResponse({"status": "fail"}, status_code=503)
 
 
-@app.post("/transcript_list")
+@app.post("/backend/transcript_list")
 async def get_transcript_list(request: Request):
     body = await request.json()
     key = body.get("key")
     
     return JSONResponse(get_available_transcript_list(key))
 
-@app.post("/room/{room_id}/transcript/{target_lang}")
+@app.post("/backend/room/{room_id}/transcript/{target_lang}")
 async def get_transcript_for_room(request: Request, room_id: str, target_lang: str):
     body = await request.json()
     key = body.get("key")
@@ -143,7 +143,7 @@ async def get_transcript_for_room(request: Request, room_id: str, target_lang: s
     
     return PlainTextResponse(compiled_transcript)
 
-@app.post("/room/{room_id}/close")
+@app.post("/backend/room/{room_id}/close")
 async def request_close_room(request: Request, room_id: str):
     body = await request.json()
     key = body.get("key")
@@ -158,7 +158,7 @@ async def request_close_room(request: Request, room_id: str):
     LOGGER.info(f"Closed room <{room_id}> on admin request")
     return JSONResponse({"status": "ok"}, status_code=200)
 
-@app.websocket("/room/{room_id}/{role}/{source_lang}/{target_lang}")
+@app.websocket("/backend/room/{room_id}/{role}/{source_lang}/{target_lang}")
 async def connect_to_room(websocket: WebSocket, room_id: str, role: str, source_lang: str, target_lang: str):
     await websocket.accept()
 
