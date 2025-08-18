@@ -85,7 +85,7 @@ class Conference:
                 if event_in_tracks(self.tracks, event):
                     return event
                 else:
-                    LOGGER.error(f"Event {event['track']} not found in {self.tracks}")
+                   # LOGGER.info(f"Event {event['track']} not found in {self.tracks}")
                     return event
         raise EventNotFoundError(f"No Event found with this id: {room_id}")
 
