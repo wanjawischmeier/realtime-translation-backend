@@ -147,7 +147,7 @@ async def get_transcript_for_room(request: Request, room_id: str, target_lang: s
 async def request_close_room(request: Request, room_id: str):
     body = await request.json()
     key = body.get("key")
-    if auth_manager.validate_key(key,"admin"):
+    if not auth_manager.validate_key(key,"admin"):
         LOGGER.info(f"Failed to close room <{room_id}>: Incorrect admin password")
         return JSONResponse({"status": "fail"}, status_code=503)
     
