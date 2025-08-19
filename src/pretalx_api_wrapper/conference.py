@@ -128,14 +128,13 @@ def event_is_ongoing(timezone, event, today) -> bool:
         return False
     # if FAKE_NOW is None:
     time_missing = dateutil.parser.isoparse(event['date']) - datetime.now(tz=timezone)
-    print(time_missing)
     #else:
     #time_missing = FAKE_NOW - dateutil.parser.isoparse(event['date'])
     duration = timedelta(hours=time.fromisoformat(event['duration']).hour,
                          minutes=time.fromisoformat(event['duration']).minute)
-    if time_missing.total_seconds() <= (720 * 60) and timedelta(
+    if time_missing.total_seconds() <= (720 * 91) and timedelta(
             minutes=-31) < time_missing < duration:
-        LOGGER.info(event['title'])
+        # LOGGER.info(event['title'])
         return True
     else:
         return False
