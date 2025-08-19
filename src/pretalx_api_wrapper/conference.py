@@ -91,9 +91,10 @@ class Conference:
 
     def update_ongoing_events(self) -> bool:
         # Returns a list of ongoing events in this conference sorted by time
-        #if self.ongoing_cache > datetime.now(self.timezone) and self.ongoing_events != []:
-         #   LOGGER.info("False")
-          #  return False
+        if self.ongoing_cache > datetime.now(self.timezone) and self.ongoing_events != []:
+         #   LOGGER.info("Using cached ongoing events")
+            return False
+        #LOGGER.info("Checking for ongoing events")
         if PRETALX.update_data():
             self.update(PRETALX.data['conference'], PRETALX.data['url'])
         self.ongoing_events = []
