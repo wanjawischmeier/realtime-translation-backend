@@ -8,7 +8,22 @@ poetry env use /home/username/.pyenv/versions/3.9.23/bin/python
 
 # Run using
 ```bash
-ngrok start --all
+ngrok start --all # only if you want to use ngrok
+bash backend.sh 
+```
+
+# Parameter explanation
+```bash
+-vac # Very important, should be always on
+--buffer-trimming sentence # waits for sentence to be finished before processing
+--buffer-trimming segment # processes after certain amount of time without waiting for context
+# Segment is more stable when people speak very fast without breaks
+# Sentence is a bit more accurate, but may cause lag when people speak too fast
+--confidence-validation # Makes it a lot faster but slightly less accurate
+--punctuation-split # Adds points between each chunk, doesnt matter if its a sentence or not
+--min-chunk-size 1 # default 1, slightly lower or higher can tweak it a bit - higher leads to cut sentences, lower to more accuracy, but increases workload for GPU
+--device e.g. cuda # run via cpu or gpu
+--compute-type float16/float32 # float32 is more precise but takes more computing power - depends on GPU architecture
 ```
 
 # Ngrok config:
