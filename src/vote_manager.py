@@ -33,12 +33,15 @@ class VoteManager:
             event['persons'] = presenter
             self.vote_list.append(event)
         self.populate_votes()
+        LOGGER.info(f"Updated vote list: {self.vote_list}")
         self.write_votes_to_disk()
         return True
 
     def get_vote_list(self):
+        self.update_vote_list()
         for event in self.vote_list:
             event['votes'] = self.votes.get(event['code'])
+        LOGGER.info(f"Available votes: {self.vote_list}")
         return self.vote_list
 
 # ----- disk-io ------

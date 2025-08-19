@@ -54,7 +54,8 @@ class Conference:
         return self.all_events
 
     def update_tomorrow_events(self) -> bool:
-        if self.today == datetime.now(self.timezone).date() and self.ongoing_events != []:
+        if self.today == datetime.now(self.timezone).date() and self.tomorrow_events != []:
+            LOGGER.info("Using cached tomorrow events.")
             return False
         if PRETALX.update_data():
             self.update(PRETALX.data['conference'], PRETALX.data['url'])
@@ -125,7 +126,7 @@ def event_in_tracks(tracks, event) -> bool:
 def event_is_ongoing(timezone, event, today) -> bool:
     #Filter Events to today
     if datetime.fromisoformat(event['date']).date() != today:
-        LOGGER.info("Dropped event because not today")
+        #LOGGER.info("Dropped event because not today")
         return False
     # if FAKE_NOW is None:
     time_missing = dateutil.parser.isoparse(event['date']) - datetime.now(tz=timezone)
