@@ -13,8 +13,8 @@ class Track:
         self.name = name
         self.color = color
 
-def calc_today():
-     return FAKE_NOW.date() if FAKE_NOW is not None else date.today()
+#def calc_today():
+ #    return FAKE_NOW.date() if FAKE_NOW is not None else date.today()
 
 class Conference:
     def __init__(self, data, url) :
@@ -23,7 +23,7 @@ class Conference:
         self.start = date.fromisoformat(data['start'])
         self.end = date.fromisoformat(data['end'])
         self.duration = data['daysCount']
-        self.today = calc_today()
+        self.today = date.today()
         self.url = url
         self.timezone = pytz.timezone(data['time_zone_name'])
         self.colors = data['colors']
@@ -39,7 +39,7 @@ class Conference:
         self.start = data['start']
         self.end = data['end']
         self.duration = data['daysCount']
-        self.today = calc_today()
+        self.today = date.today()
         self.url = url
         self.timezone = pytz.timezone(data['time_zone_name'])
         self.colors = data['colors']
@@ -91,8 +91,9 @@ class Conference:
 
     def update_ongoing_events(self) -> bool:
         # Returns a list of ongoing events in this conference sorted by time
-        if self.ongoing_cache > datetime.now(self.timezone) and self.ongoing_events != []:
-            return False
+        #if self.ongoing_cache > datetime.now(self.timezone) and self.ongoing_events != []:
+         #   LOGGER.info("False")
+          #  return False
         if PRETALX.update_data():
             self.update(PRETALX.data['conference'], PRETALX.data['url'])
         self.ongoing_events = []
@@ -121,17 +122,20 @@ def event_in_tracks(tracks, event) -> bool:
     return False
 
 def event_is_ongoing(timezone, event, today) -> bool:
-    # Filter Events to today
+    #Filter Events to today
     if datetime.fromisoformat(event['date']).date() != today:
+        LOGGER.info("Dropped event because not today")
         return False
-    if FAKE_NOW is None:
-        time_missing = datetime.now(tz=timezone) - dateutil.parser.isoparse(event['date'])
-    else:
-        time_missing = FAKE_NOW - dateutil.parser.isoparse(event['date'])
+    # if FAKE_NOW is None:
+    time_missing = dateutil.parser.isoparse(event['date']) - datetime.now(tz=timezone)
+    print(time_missing)
+    #else:
+    #time_missing = FAKE_NOW - dateutil.parser.isoparse(event['date'])
     duration = timedelta(hours=time.fromisoformat(event['duration']).hour,
                          minutes=time.fromisoformat(event['duration']).minute)
     if time_missing.total_seconds() <= (720 * 60) and timedelta(
             minutes=-31) < time_missing < duration:
+        LOGGER.info(event['title'])
         return True
     else:
         return False
