@@ -41,7 +41,7 @@ poetry run python src/whisper_server.py
 ```
 
 # Architecture
-<img width="1262" height="971" alt="Unbenannt" src="https://github.com/user-attachments/assets/c92f694b-1107-4c68-8330-f94f01f3fa07" />
+<img width="1222" height="931" alt="Unbenannt" src="https://github.com/user-attachments/assets/a0a825f6-d835-4e4b-889b-31cd1afabd22" />
 
 ## Endpoints
 - http://localhost:3000: Umami frontend stats
