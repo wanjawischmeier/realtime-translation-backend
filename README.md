@@ -50,7 +50,7 @@ endpoints:
   - `GET /health`: Health check, returns [status](#health-check)
   - `GET /room_list`: Returns a [room list](#room-list)
   - `GET /vote`: Get vote list
-  - `GET /VOTE/{id}/action`: Action can be `add` or `remove`
+  - `GET /VOTE/{id}/{action}`: Action can be `add` or `remove`
   - `POST /auth`: Checks password, returns [result](#auth-check)
   - `POST /transcript_list`: Returns a list of [transcript infos](#transcript-infos)
   - `POST /room/{room_id}/transcript/{target_lang}`: Compiles and returns the entire transcript of a given room in the `target_lang` as a string. Joins all partial transcripts available for that room.
