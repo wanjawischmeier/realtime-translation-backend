@@ -2,18 +2,28 @@ The backend for our [realtime translation project](https://github.com/stars/wanj
 
 This project is using the [wanjawischmeier/WhisperLiveKit](https://github.com/wanjawischmeier/WhisperLiveKit) fork of [QuentinFuxa's](https://github.com/QuentinFuxa) Whisper wrapper to transcribe audio locally and in realtime. It is able to translate this transcript into a list of dynamically requested languages using [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) and send out transcript chunks to the respective frontends using a websocket connection. This pipeline is able to support multiple streamers and viewers in a room system. When streamers connect to and activate a room, they are able to send their microphone audio to the server for processing.
 
-# Dependencies
+# Getting started
+## Dependencies
+- Python 3.9.23 (pyenv)
+- Poetry
+- FFmpeg
+
 ```bash
 sudo apt-get install ffmpeg
+
+# If using pyenv
 pyenv install 3.9.23 # if not installed already
 pyenv local 3.9.23
 poetry env use /home/username/.pyenv/versions/3.9.23/bin/python
 ```
 
-# Run using
+## Run using
 ```bash
-ngrok start --all # only if you want to use ngrok
-bash backend.sh 
+# With predefined parameters
+bash backend.sh
+
+# Or manually
+poetry run python src/whisper_server.py
 ```
 
 # Parameter explanation
@@ -68,6 +78,10 @@ endpoints:
     url: https://dynamic-freely-chigger.ngrok-free.app
     upstream:
       url: 8000
+```
+Start using
+```
+ngrok start --all
 ```
 
 # Data structures
