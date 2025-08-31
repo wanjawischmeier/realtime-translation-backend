@@ -30,19 +30,10 @@ bash backend.sh
 --compute-type float16/float32 # float32 is more precise but takes more computing power - depends on GPU architecture
 ```
 
-# Ngrok config:
-```yaml
-endpoints:
-  - name: frontend
-    upstream:
-      url: 5173
-  - name: backend>
-    url: https://dynamic-freely-chigger.ngrok-free.app
-    upstream:
-      url: 8000
-```
+# Architecture
+<img width="1262" height="971" alt="Unbenannt" src="https://github.com/user-attachments/assets/c92f694b-1107-4c68-8330-f94f01f3fa07" />
 
-# Endpoints
+## Endpoints
 - http://localhost:3000: Umami frontend stats
 - http://localhost:8090: Beszel backend performance stats
 - http://localhost:5000: LibreTranslate instance
@@ -66,6 +57,18 @@ endpoints:
     - `role`: Can be `host` or `client`
     - `source_lang`/`target_lang`: The respective country codes, e.g. `de`, `en`
 `en`
+
+# Ngrok config:
+```yaml
+endpoints:
+  - name: frontend
+    upstream:
+      url: 5173
+  - name: backend>
+    url: https://dynamic-freely-chigger.ngrok-free.app
+    upstream:
+      url: 8000
+```
 
 # Data structures
 ## Room list
