@@ -1,4 +1,4 @@
-The backend for [wanjawischmeier/realtime-translation-frontend](https://github.com/wanjawischmeier/realtime-translation-frontend). Expected to be ran alongside the frontend.
+The backend for our [realtime translation project](https://github.com/stars/wanjawischmeier/lists/realtime-translation). Expected to be ran alongside the [frontend](https://github.com/wanjawischmeier/realtime-translation-frontend).
 
 This project is using the [wanjawischmeier/WhisperLiveKit](https://github.com/wanjawischmeier/WhisperLiveKit) fork of [QuentinFuxa's](https://github.com/QuentinFuxa) Whisper wrapper to transcribe audio locally and in realtime. It is able to translate this transcript into a list of dynamically requested languages using [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) and send out transcript chunks to the respective frontends using a websocket connection. This pipeline is able to support multiple streamers and viewers in a room system. When streamers connect to and activate a room, they are able to send their microphone audio to the server for processing.
 
