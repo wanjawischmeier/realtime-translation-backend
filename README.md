@@ -236,7 +236,7 @@ docker compose up -d
   - [x] Fix: Rooms get prematurely closed upon host reconnects
   - [x] Preserve source lang across host reconnects
   - [x] Everyone should get kicked out of room if it closes
-  - [ ] Fix host disconnect after long time
+  - [x] Fix host disconnect after long time
 - [x] Raumliste an frontend schicken (Endpoint)
 - [x] Auth cookie zum Authentifizieren nutzen
 - [x] Check if room is "DO-NOT-RECORD" and prevent activating it
